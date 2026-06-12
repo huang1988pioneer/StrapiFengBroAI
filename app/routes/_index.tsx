@@ -34,6 +34,7 @@ type FieldDef = {
   type?: FieldType;
   placeholder?: string;
   required?: boolean;
+  strapiKey?: string;
 };
 
 type ModuleDef = {
@@ -42,6 +43,7 @@ type ModuleDef = {
   subtitle: string;
   icon: JSX.Element;
   fields: FieldDef[];
+  apiPath?: string;
   seedCsv?: string;
   children?: ModuleDef[];
 };
@@ -55,6 +57,7 @@ type ItemRecord = {
 
 const nowIso = () => new Date().toISOString();
 const storagePrefix = "fengbro-remix-crud";
+const settingsStorageKey = `${storagePrefix}:settings`;
 const defaultStrapiUrl = import.meta.env.VITE_STRAPI_URL || "";
 const defaultStrapiApiToken = import.meta.env.VITE_STRAPI_API_TOKEN || "";
 
@@ -118,7 +121,7 @@ const subscriptionFields: FieldDef[] = [
   { key: "note", label: "備註", type: "textarea" },
   { key: "account", label: "帳號" },
   { key: "currency", label: "幣別", placeholder: "TWD" },
-  { key: "continue", label: "持續", type: "boolean" },
+  { key: "continue", label: "持續", type: "boolean", strapiKey: "iscontinue" },
 ];
 
 const mediaFields: FieldDef[] = [
@@ -130,12 +133,13 @@ const mediaFields: FieldDef[] = [
 ];
 
 const modules: ModuleDef[] = [
-  { id: "subscription", label: "鋒兄訂閱", subtitle: "續訂、扣款與提醒", icon: <Archive />, fields: subscriptionFields, seedCsv: subscriptionCsv },
+  { id: "subscription", label: "鋒兄訂閱", subtitle: "續訂、扣款與提醒", icon: <Archive />, fields: subscriptionFields, apiPath: "subscriptions", seedCsv: subscriptionCsv },
   {
     id: "food",
     label: "鋒兄食品",
     subtitle: "食品與商品庫存",
     icon: <Utensils />,
+    apiPath: "foods",
     seedCsv: foodCsv,
     fields: [
       { key: "name", label: "名稱", required: true },
@@ -152,12 +156,13 @@ const modules: ModuleDef[] = [
     label: "鋒兄筆記",
     subtitle: "文章、連結與附件",
     icon: <BookOpenText />,
+    apiPath: "articles",
     seedCsv: articleCsv,
     fields: [
       { key: "title", label: "標題", required: true },
       { key: "content", label: "內容", type: "textarea" },
       { key: "category", label: "分類" },
-      { key: "newDate", label: "日期", type: "date" },
+      { key: "newDate", label: "日期", type: "date", strapiKey: "newdate" },
       { key: "url1", label: "連結 1", type: "url" },
       { key: "url2", label: "連結 2", type: "url" },
       { key: "url3", label: "連結 3", type: "url" },
@@ -177,6 +182,7 @@ const modules: ModuleDef[] = [
     label: "鋒兄常用",
     subtitle: "常用帳號與網站",
     icon: <FolderHeart />,
+    apiPath: "commonaccounts",
     seedCsv: commonCsv,
     fields: [
       { key: "name", label: "帳號", required: true },
@@ -186,16 +192,17 @@ const modules: ModuleDef[] = [
       ]),
     ],
   },
-  { id: "image", label: "鋒兄圖片", subtitle: "圖片素材庫", icon: <Image />, fields: mediaFields },
-  { id: "video", label: "鋒兄影片", subtitle: "影片與頻道", icon: <Film />, fields: mediaFields },
-  { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: mediaFields },
-  { id: "document", label: "鋒兄文件", subtitle: "文件與檔案", icon: <FileText />, fields: mediaFields },
-  { id: "podcast", label: "鋒兄播客", subtitle: "播客清單", icon: <FileAudio />, fields: mediaFields },
+  { id: "image", label: "鋒兄圖片", subtitle: "圖片素材庫", icon: <Image />, fields: mediaFields, apiPath: "images" },
+  { id: "video", label: "鋒兄影片", subtitle: "影片與頻道", icon: <Film />, fields: mediaFields, apiPath: "videos" },
+  { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: mediaFields, apiPath: "music" },
+  { id: "document", label: "鋒兄文件", subtitle: "文件與檔案", icon: <FileText />, fields: mediaFields, apiPath: "commondocuments" },
+  { id: "podcast", label: "鋒兄播客", subtitle: "播客清單", icon: <FileAudio />, fields: mediaFields, apiPath: "podcasts" },
   {
     id: "bank",
     label: "鋒兄銀行",
     subtitle: "銀行與電子票證",
     icon: <Banknote />,
+    apiPath: "banks",
     seedCsv: bankCsv,
     fields: [
       { key: "name", label: "名稱", required: true },
@@ -214,6 +221,7 @@ const modules: ModuleDef[] = [
     label: "鋒兄例行",
     subtitle: "例行採買與保養",
     icon: <RefreshCcw />,
+    apiPath: "routines",
     seedCsv: routineCsv,
     fields: [
       { key: "name", label: "名稱", required: true },
@@ -232,7 +240,7 @@ const modules: ModuleDef[] = [
     icon: <Wrench />,
     fields: mediaFields,
     children: [
-      { id: "price", label: "鋒兄比價", subtitle: "價格追蹤", icon: <PackagePlus />, fields: mediaFields },
+      { id: "price", label: "鋒兄比價", subtitle: "價格追蹤", icon: <PackagePlus />, fields: mediaFields, apiPath: "tool-price-histories" },
       { id: "phone-price", label: "手機比價", subtitle: "手機規格價格", icon: <Boxes />, fields: mediaFields },
       { id: "tube", label: "鋒兄Tube", subtitle: "影音搜尋", icon: <Film />, fields: mediaFields },
       { id: "finance", label: "鋒兄金融", subtitle: "金融資訊", icon: <Banknote />, fields: mediaFields },
@@ -271,34 +279,28 @@ export default function Index() {
   const [activeId, setActiveId] = useState("subscription");
   const activeModule = moduleMap.get(activeId) ?? modules[0];
   const [recordsByModule, setRecordsByModule] = useState<Record<string, ItemRecord[]>>({});
+  const [settings, setSettings] = useState<ItemRecord>(() => getDefaultSettingsRecord());
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | boolean>>({});
+  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("已準備 Remix CRUD 工作台");
 
   useEffect(() => {
-    const next: Record<string, ItemRecord[]> = {};
-    for (const moduleDef of flattenModules(modules)) {
-      const key = storageKey(moduleDef.id);
-      const saved = window.localStorage.getItem(key);
-      if (saved) {
-        next[moduleDef.id] = JSON.parse(saved) as ItemRecord[];
-      } else if (moduleDef.seedCsv) {
-        next[moduleDef.id] = rowsToRecords(parseCsv(moduleDef.seedCsv), moduleDef);
-      } else {
-        next[moduleDef.id] = [];
-      }
+    const saved = window.localStorage.getItem(settingsStorageKey);
+    if (saved) {
+      setSettings({ ...getDefaultSettingsRecord(), ...(JSON.parse(saved) as ItemRecord) });
     }
-    setRecordsByModule(next);
   }, []);
 
   useEffect(() => {
     setEditingId(null);
-    setDraft(getEmptyDraft(activeModule));
+    setDraft(activeModule.id === "settings" ? settingsToDraft(settings) : getEmptyDraft(activeModule));
     setSearch("");
-  }, [activeModule.id]);
+    if (activeModule.id !== "settings") void loadRecords(activeModule);
+  }, [activeModule.id, settings.strapiUrl, settings.apiToken]);
 
-  const records = recordsByModule[activeModule.id] ?? [];
+  const records = activeModule.id === "settings" ? [settings] : recordsByModule[activeModule.id] ?? [];
   const visibleRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return records;
@@ -318,12 +320,42 @@ export default function Index() {
     return { total, numericTotal };
   }, [records]);
 
-  function persist(moduleId: string, nextRecords: ItemRecord[]) {
+  function setModuleRecords(moduleId: string, nextRecords: ItemRecord[]) {
     setRecordsByModule((prev) => ({ ...prev, [moduleId]: nextRecords }));
-    window.localStorage.setItem(storageKey(moduleId), JSON.stringify(nextRecords));
   }
 
-  function saveRecord() {
+  function saveSettings(nextSettings: ItemRecord) {
+    setSettings(nextSettings);
+    window.localStorage.setItem(settingsStorageKey, JSON.stringify(nextSettings));
+  }
+
+  async function loadRecords(moduleDef = activeModule) {
+    if (moduleDef.id === "settings") return;
+    if (!moduleDef.apiPath) {
+      setModuleRecords(moduleDef.id, []);
+      setToast(`${moduleDef.label} 尚未設定 Strapi collection API 路徑`);
+      return;
+    }
+    if (!hasStrapiConfig(settings)) {
+      setModuleRecords(moduleDef.id, []);
+      setToast("請先到鋒兄設定填寫 Strapi URL 和 Strapi API Token");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = await strapiRequest(settings, moduleDef.apiPath, "GET");
+      setModuleRecords(moduleDef.id, strapiListToRecords(payload, moduleDef));
+      setToast(`已從 Strapi 載入 ${moduleDef.label}`);
+    } catch (error) {
+      setModuleRecords(moduleDef.id, []);
+      setToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveRecord() {
     const missing = activeModule.fields.find((field) => field.required && !String(draft[field.key] ?? "").trim());
     if (missing) {
       setToast(`請先填寫 ${missing.label}`);
@@ -331,25 +363,51 @@ export default function Index() {
     }
 
     const normalized = normalizeDraft(draft, activeModule);
-    if (editingId) {
-      persist(
-        activeModule.id,
-        records.map((record) =>
-          record.id === editingId
-            ? { ...record, ...normalized, updatedAt: nowIso() }
-            : record,
-        ),
-      );
-      setToast(`已更新 ${getRecordTitle(normalized, activeModule)}`);
-    } else {
-      const created: ItemRecord = {
-        id: crypto.randomUUID(),
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
+    if (activeModule.id === "settings") {
+      const nextSettings = {
+        ...settings,
         ...normalized,
+        id: "settings",
+        updatedAt: nowIso(),
       };
-      persist(activeModule.id, [created, ...records]);
-      setToast(`已新增 ${getRecordTitle(created, activeModule)}`);
+      saveSettings(nextSettings);
+      setEditingId(null);
+      setDraft(settingsToDraft(nextSettings));
+      setToast("已儲存 Strapi URL / API Token");
+      return;
+    }
+
+    if (!activeModule.apiPath) {
+      setToast(`${activeModule.label} 尚未設定 Strapi collection API 路徑，無法新增到資料庫`);
+      return;
+    }
+    if (!hasStrapiConfig(settings)) {
+      setToast("請先到鋒兄設定填寫 Strapi URL 和 Strapi API Token");
+      return;
+    }
+
+    setLoading(true);
+    if (editingId) {
+      try {
+        const target = records.find((record) => record.id === editingId);
+        await strapiRequest(settings, `${activeModule.apiPath}/${target?._strapiId ?? editingId}`, "PUT", toStrapiData(normalized, activeModule));
+        await loadRecords(activeModule);
+        setToast(`已更新 Strapi：${getRecordTitle(normalized, activeModule)}`);
+      } catch (error) {
+        setToast(getErrorMessage(error));
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      try {
+        await strapiRequest(settings, activeModule.apiPath, "POST", toStrapiData(normalized, activeModule));
+        await loadRecords(activeModule);
+        setToast(`已新增至 Strapi：${getRecordTitle(normalized, activeModule)}`);
+      } catch (error) {
+        setToast(getErrorMessage(error));
+      } finally {
+        setLoading(false);
+      }
     }
 
     setEditingId(null);
@@ -361,24 +419,81 @@ export default function Index() {
     setDraft(Object.fromEntries(activeModule.fields.map((field) => [field.key, record[field.key] ?? ""])));
   }
 
-  function deleteRecord(id: string) {
+  async function deleteRecord(id: string) {
     const target = records.find((record) => record.id === id);
-    persist(activeModule.id, records.filter((record) => record.id !== id));
-    setToast(`已刪除 ${target ? getRecordTitle(target, activeModule) : "資料"}`);
+    if (activeModule.id === "settings") {
+      const nextSettings = getDefaultSettingsRecord();
+      saveSettings(nextSettings);
+      setDraft(settingsToDraft(nextSettings));
+      setToast("已清空 Strapi 設定");
+      return;
+    }
+    if (!activeModule.apiPath || !target) return;
+
+    setLoading(true);
+    try {
+      await strapiRequest(settings, `${activeModule.apiPath}/${target._strapiId ?? id}`, "DELETE");
+      await loadRecords(activeModule);
+      setToast(`已從 Strapi 刪除 ${target ? getRecordTitle(target, activeModule) : "資料"}`);
+    } catch (error) {
+      setToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function resetSeed() {
-    const next = activeModule.seedCsv ? rowsToRecords(parseCsv(activeModule.seedCsv), activeModule) : [];
-    persist(activeModule.id, next);
-    setToast(`已重設 ${activeModule.label} 範例資料`);
+  async function resetSeed() {
+    if (activeModule.id === "settings") {
+      const nextSettings = getDefaultSettingsRecord();
+      saveSettings(nextSettings);
+      setDraft(settingsToDraft(nextSettings));
+      setToast("已重設 Strapi URL / API Token 預設值");
+      return;
+    }
+    if (!activeModule.seedCsv) {
+      await loadRecords(activeModule);
+      return;
+    }
+    await importRows(parseCsv(activeModule.seedCsv), activeModule, "範例資料");
   }
 
   async function importCsv(file: File) {
     const text = await file.text();
-    const imported = rowsToRecords(parseCsv(text), activeModule);
-    persist(activeModule.id, [...imported, ...records]);
-    setToast(`已匯入 ${imported.length} 筆 CSV 至 ${activeModule.label}`);
+    await importRows(parseCsv(text), activeModule, file.name);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function importRows(rows: Record<string, string>[], moduleDef: ModuleDef, label: string) {
+    if (moduleDef.id === "settings") {
+      const imported = rowsToRecords(rows, moduleDef)[0];
+      if (imported) {
+        saveSettings({ ...settings, ...imported, id: "settings", updatedAt: nowIso() });
+        setToast(`已匯入 Strapi 設定：${label}`);
+      }
+      return;
+    }
+    if (!moduleDef.apiPath) {
+      setToast(`${moduleDef.label} 尚未設定 Strapi collection API 路徑，無法匯入資料庫`);
+      return;
+    }
+    if (!hasStrapiConfig(settings)) {
+      setToast("請先到鋒兄設定填寫 Strapi URL 和 Strapi API Token");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      for (const row of rows) {
+        const normalized = normalizeDraft(row, moduleDef);
+        await strapiRequest(settings, moduleDef.apiPath, "POST", toStrapiData(normalized, moduleDef));
+      }
+      await loadRecords(moduleDef);
+      setToast(`已匯入 ${rows.length} 筆 CSV 至 Strapi：${moduleDef.label}`);
+    } catch (error) {
+      setToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
   }
 
   function exportCsv() {
@@ -420,7 +535,7 @@ export default function Index() {
           <div className="top-actions">
             <button className="ghost-button" type="button" onClick={resetSeed}>
               <RefreshCcw size={16} />
-              重設範例
+              {activeModule.id === "settings" ? "重設設定" : activeModule.seedCsv ? "匯入範例" : "重新載入"}
             </button>
             <button className="primary-button" type="button" onClick={() => setDraft(getEmptyDraft(activeModule))}>
               <Plus size={16} />
@@ -518,7 +633,7 @@ export default function Index() {
               </div>
               <span className="status-pill">
                 <Check size={14} />
-                Local
+                {activeModule.id === "settings" ? "Local" : "Strapi"}
               </span>
             </div>
 
@@ -536,8 +651,8 @@ export default function Index() {
             </div>
 
             <div className="editor-actions">
-              <button className="primary-button" type="button" onClick={saveRecord}>
-                {editingId ? "儲存修改" : "建立資料"}
+              <button className="primary-button" type="button" onClick={saveRecord} disabled={loading}>
+                {loading ? "處理中..." : editingId ? "儲存修改" : "建立資料"}
               </button>
               <button
                 className="ghost-button"
@@ -650,8 +765,98 @@ function flattenModules(items: ModuleDef[]): ModuleDef[] {
   return items.flatMap((item) => [item, ...(item.children ? flattenModules(item.children) : [])]);
 }
 
-function storageKey(moduleId: string) {
-  return `${storagePrefix}:${moduleId}`;
+function getDefaultSettingsRecord(): ItemRecord {
+  return {
+    id: "settings",
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+    name: "Strapi",
+    strapiUrl: defaultStrapiUrl,
+    apiToken: defaultStrapiApiToken,
+    note: "Strapi URL 與 Strapi API Token 是唯一保存在瀏覽器的設定。",
+  };
+}
+
+function settingsToDraft(settings: ItemRecord) {
+  return {
+    name: String(settings.name ?? "Strapi"),
+    strapiUrl: String(settings.strapiUrl ?? ""),
+    apiToken: String(settings.apiToken ?? ""),
+    note: String(settings.note ?? ""),
+  };
+}
+
+function hasStrapiConfig(settings: ItemRecord) {
+  return Boolean(String(settings.strapiUrl ?? "").trim() && String(settings.apiToken ?? "").trim());
+}
+
+async function strapiRequest(settings: ItemRecord, path: string, method: "GET" | "POST" | "PUT" | "DELETE", data?: Record<string, unknown>) {
+  const baseUrl = String(settings.strapiUrl ?? "").replace(/\/+$/, "");
+  const token = String(settings.apiToken ?? "").trim();
+  const url = `${baseUrl}/api/${path}${method === "GET" ? "?pagination[pageSize]=100" : ""}`;
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: data ? JSON.stringify({ data }) : undefined,
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const errorBody = await response.json();
+      detail = errorBody?.error?.message ? `：${errorBody.error.message}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`Strapi ${method} /api/${path} 失敗 (${response.status})${detail}`);
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function strapiListToRecords(payload: unknown, moduleDef: ModuleDef): ItemRecord[] {
+  const list = Array.isArray((payload as { data?: unknown })?.data) ? (payload as { data: unknown[] }).data : [];
+  return list.map((entry) => strapiEntryToRecord(entry, moduleDef));
+}
+
+function strapiEntryToRecord(entry: unknown, moduleDef: ModuleDef): ItemRecord {
+  const source = entry as Record<string, unknown>;
+  const attributes = (source.attributes && typeof source.attributes === "object" ? source.attributes : source) as Record<string, unknown>;
+  const strapiId = String(source.documentId ?? source.id ?? crypto.randomUUID());
+  const mapped = Object.fromEntries(
+    moduleDef.fields.map((field) => {
+      const value = attributes[field.strapiKey ?? field.key] ?? "";
+      return [field.key, coerceFieldValue(value, field)];
+    }),
+  );
+
+  return {
+    id: strapiId,
+    _strapiId: strapiId,
+    createdAt: String(attributes.createdAt ?? ""),
+    updatedAt: String(attributes.updatedAt ?? ""),
+    ...mapped,
+  };
+}
+
+function toStrapiData(record: Record<string, string | number | boolean>, moduleDef: ModuleDef) {
+  return Object.fromEntries(
+    moduleDef.fields.map((field) => [field.strapiKey ?? field.key, record[field.key] ?? ""]),
+  );
+}
+
+function coerceFieldValue(value: unknown, field: FieldDef) {
+  if (field.type === "number") return Number(value || 0);
+  if (field.type === "boolean") return value === true || value === "true";
+  return String(value ?? "");
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Strapi 操作失敗";
 }
 
 function getEmptyDraft(moduleDef: ModuleDef) {
