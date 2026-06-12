@@ -55,6 +55,8 @@ type ItemRecord = {
 
 const nowIso = () => new Date().toISOString();
 const storagePrefix = "fengbro-remix-crud";
+const defaultStrapiUrl = import.meta.env.VITE_STRAPI_URL || "";
+const defaultStrapiApiToken = import.meta.env.VITE_STRAPI_API_TOKEN || "";
 
 const subscriptionCsv = `name,site,price,nextdate,note,account,currency,continue
 小北百貨連續簽到,,0,2026-06-07,"~0607
@@ -105,9 +107,8 @@ const routineCsv = `name,note,lastdate1,lastdate2,lastdate3,link,photo
 鋒兄眼鏡,"13500元
 非凡比眼鏡",2025-09-03T00:00:00.000+00:00,,,,`;
 
-const settingsCsv = `name,environment,appUrl,strapiUrl,appwriteEndpoint,projectId,apiTokenName,apiToken,readToken,writeToken,enabled,note
-Production,production,https://strapifengbroai-dplipoaywwkn.edgeone.dev,https://strapihuang1988pioneer.example.com,https://cloud.appwrite.io/v1,,EdgeOne Deploy Token,,,true,"正式 token 不建議存瀏覽器 localStorage"
-Local,development,http://127.0.0.1:5173,http://127.0.0.1:1337,http://127.0.0.1/v1,,Local Dev Token,,,true,"本機開發用設定"`;
+const settingsCsv = `name,strapiUrl,apiToken,note
+Strapi,${defaultStrapiUrl},${defaultStrapiApiToken},"可用 VITE_STRAPI_URL 與 VITE_STRAPI_API_TOKEN 從部署環境預填"`;
 
 const subscriptionFields: FieldDef[] = [
   { key: "name", label: "名稱", required: true },
@@ -240,21 +241,13 @@ const modules: ModuleDef[] = [
   {
     id: "settings",
     label: "鋒兄設定",
-    subtitle: "App URL 與 API Tokens",
+    subtitle: "Strapi URL 與 API Token",
     icon: <Settings />,
     seedCsv: settingsCsv,
     fields: [
       { key: "name", label: "設定名稱", required: true },
-      { key: "environment", label: "環境", placeholder: "production" },
-      { key: "appUrl", label: "App URL", type: "url" },
       { key: "strapiUrl", label: "Strapi URL", type: "url" },
-      { key: "appwriteEndpoint", label: "Appwrite Endpoint", type: "url" },
-      { key: "projectId", label: "Project ID" },
-      { key: "apiTokenName", label: "API Token 名稱" },
-      { key: "apiToken", label: "API Token", type: "textarea" },
-      { key: "readToken", label: "Read Token", type: "textarea" },
-      { key: "writeToken", label: "Write Token", type: "textarea" },
-      { key: "enabled", label: "啟用", type: "boolean" },
+      { key: "apiToken", label: "Strapi API Token", type: "textarea" },
       { key: "note", label: "備註", type: "textarea" },
     ],
   },
