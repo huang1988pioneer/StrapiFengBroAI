@@ -143,6 +143,28 @@ const imageFields: FieldDef[] = [
   { key: "cover", label: "封面 URL", type: "url" },
 ];
 
+const fileAssetFields: FieldDef[] = [
+  { key: "name", label: "名稱", required: true },
+  { key: "file", label: "檔案 URL", type: "url" },
+  { key: "filetype", label: "檔案類型" },
+  { key: "note", label: "備註", type: "textarea" },
+  { key: "ref", label: "來源/參考", type: "url" },
+  { key: "category", label: "分類" },
+  { key: "hash", label: "Hash" },
+  { key: "cover", label: "封面 URL", type: "url" },
+];
+
+const videoFields: FieldDef[] = [
+  ...fileAssetFields,
+  { key: "fileSize", label: "檔案大小", type: "number" },
+];
+
+const musicFields: FieldDef[] = [
+  ...fileAssetFields,
+  { key: "lyrics", label: "歌詞", type: "textarea" },
+  { key: "language", label: "語言" },
+];
+
 const modules: ModuleDef[] = [
   { id: "subscription", label: "鋒兄訂閱", subtitle: "續訂、扣款與提醒", icon: <Archive />, fields: subscriptionFields, apiPath: "subscriptions", seedCsv: subscriptionCsv },
   {
@@ -204,10 +226,10 @@ const modules: ModuleDef[] = [
     ],
   },
   { id: "image", label: "鋒兄圖片", subtitle: "圖片素材庫", icon: <Image />, fields: imageFields, apiPath: "images" },
-  { id: "video", label: "鋒兄影片", subtitle: "影片與頻道", icon: <Film />, fields: mediaFields, apiPath: "videos" },
-  { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: mediaFields, apiPath: "music" },
-  { id: "document", label: "鋒兄文件", subtitle: "文件與檔案", icon: <FileText />, fields: mediaFields, apiPath: "commondocuments" },
-  { id: "podcast", label: "鋒兄播客", subtitle: "播客清單", icon: <FileAudio />, fields: mediaFields, apiPath: "podcasts" },
+  { id: "video", label: "鋒兄影片", subtitle: "影片與頻道", icon: <Film />, fields: videoFields, apiPath: "videos" },
+  { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: musicFields, apiPath: "music" },
+  { id: "document", label: "鋒兄文件", subtitle: "文件與檔案", icon: <FileText />, fields: fileAssetFields, apiPath: "commondocuments" },
+  { id: "podcast", label: "鋒兄播客", subtitle: "播客清單", icon: <FileAudio />, fields: fileAssetFields, apiPath: "podcasts" },
   {
     id: "bank",
     label: "鋒兄銀行",
@@ -287,7 +309,7 @@ const moduleMap = new Map(flattenModules(modules).map((item) => [item.id, item])
 
 export default function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
-  const imageUploadRef = useRef<HTMLInputElement>(null);
+  const mediaUploadRef = useRef<HTMLInputElement>(null);
   const [activeId, setActiveId] = useState("subscription");
   const activeModule = moduleMap.get(activeId) ?? modules[0];
   const [recordsByModule, setRecordsByModule] = useState<Record<string, ItemRecord[]>>({});
@@ -541,14 +563,14 @@ export default function Index() {
     }
   }
 
-  async function uploadImageFile(file: File) {
+  async function uploadMediaFile(file: File) {
     if (!hasStrapiConfig(settings)) {
       setToast("請先到鋒兄設定填寫 Strapi URL 和 Strapi API Token");
       return;
     }
 
     setLoading(true);
-    setToast(`正在上傳圖片：${file.name}`);
+    setToast(`正在上傳${getUploadKind(activeModule.id)}：${file.name}`);
     try {
       const uploaded = await strapiUploadFile(settings, file);
       const url = getStrapiAssetUrl(settings, String(uploaded.url ?? ""));
@@ -559,13 +581,14 @@ export default function Index() {
         cover: url,
         filetype: String(uploaded.mime ?? file.type ?? ""),
         hash: String(uploaded.hash ?? ""),
+        fileSize: activeModule.id === "video" ? Number(uploaded.size ?? file.size ?? 0) : prev.fileSize ?? 0,
       }));
-      setToast(`圖片上傳成功：${file.name}`);
+      setToast(`${getUploadKind(activeModule.id)}上傳成功：${file.name}`);
     } catch (error) {
       setToast(getErrorMessage(error));
     } finally {
       setLoading(false);
-      if (imageUploadRef.current) imageUploadRef.current.value = "";
+      if (mediaUploadRef.current) mediaUploadRef.current.value = "";
     }
   }
 
@@ -738,21 +761,21 @@ export default function Index() {
             </div>
 
             <div className="editor-actions">
-              {activeModule.id === "image" ? (
+              {isUploadModule(activeModule.id) ? (
                 <>
                   <input
-                    ref={imageUploadRef}
+                    ref={mediaUploadRef}
                     className="file-input"
                     type="file"
-                    accept="image/*"
+                    accept={getUploadAccept(activeModule.id)}
                     onChange={(event) => {
                       const file = event.target.files?.[0];
-                      if (file) void uploadImageFile(file);
+                      if (file) void uploadMediaFile(file);
                     }}
                   />
-                  <button className="tool-button" type="button" onClick={() => imageUploadRef.current?.click()} disabled={loading}>
+                  <button className="tool-button" type="button" onClick={() => mediaUploadRef.current?.click()} disabled={loading}>
                     <Upload size={16} />
-                    上傳圖片
+                    上傳{getUploadKind(activeModule.id)}
                   </button>
                 </>
               ) : null}
@@ -963,6 +986,43 @@ function getStrapiAssetUrl(settings: ItemRecord, url: string) {
   if (/^https?:\/\//i.test(url)) return url;
   const baseUrl = String(settings.strapiUrl ?? "").replace(/\/+$/, "");
   return `${baseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
+function isUploadModule(moduleId: string) {
+  return ["image", "video", "music", "document", "podcast"].includes(moduleId);
+}
+
+function getUploadKind(moduleId: string) {
+  switch (moduleId) {
+    case "image":
+      return "圖片";
+    case "video":
+      return "影片";
+    case "music":
+      return "音樂";
+    case "document":
+      return "文件";
+    case "podcast":
+      return "播客";
+    default:
+      return "檔案";
+  }
+}
+
+function getUploadAccept(moduleId: string) {
+  switch (moduleId) {
+    case "image":
+      return "image/*";
+    case "video":
+      return "video/*";
+    case "music":
+    case "podcast":
+      return "audio/*";
+    case "document":
+      return ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,application/pdf,text/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    default:
+      return "*/*";
+  }
 }
 
 function strapiListToRecords(payload: unknown, moduleDef: ModuleDef): ItemRecord[] {

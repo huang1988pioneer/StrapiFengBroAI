@@ -15,7 +15,7 @@ Remix 版鋒兄資料庫 CRUD 工作台，配合 `huang1988pioneer/Strapihuang19
 - 內建訂閱、食品、筆記、常用、銀行、例行的範例 CSV 資料
 - 鋒兄設定極簡化為 Strapi URL、Strapi API Token
 - 鋒兄設定提供「測試連線」，會用目前表單內容測試 `Subscription` API 讀取權限
-- 鋒兄圖片支援上傳圖片到 Strapi Media Library，並把圖片 URL 寫入 `images` collection
+- 鋒兄圖片、影片、音樂、文件、播客支援上傳檔案到 Strapi Media Library，並把檔案 URL 寫入對應 collection
 
 ## Strapi CRUD 對應
 
@@ -37,9 +37,9 @@ Remix 版鋒兄資料庫 CRUD 工作台，配合 `huang1988pioneer/Strapihuang19
 手機比價、鋒兄Tube、鋒兄金融若要真正 CRUD，需要先在 Strapi 新增對應
 collection type，並在前端補上 API path。
 
-## 圖片上傳
+## 檔案上傳
 
-在鋒兄圖片選單中點 `上傳圖片`，前端會先呼叫：
+在鋒兄圖片、影片、音樂、文件、播客選單中點上傳按鈕，前端會先呼叫：
 
 ```text
 POST /api/upload
@@ -48,12 +48,13 @@ POST /api/upload
 上傳成功後會自動填入：
 
 - `名稱`
-- `圖片 URL`
+- `檔案 URL`
 - `封面 URL`
 - `檔案類型`
 - `Hash`
+- 影片會另外填入 `檔案大小`
 
-再按 `建立資料`，才會新增到 Strapi 的 `/api/images` collection。
+再按 `建立資料`，才會新增到 Strapi 對應 collection。
 
 ## Token 注意事項
 
