@@ -581,7 +581,7 @@ export default function Index() {
         cover: url,
         filetype: String(uploaded.mime ?? file.type ?? ""),
         hash: String(uploaded.hash ?? ""),
-        fileSize: activeModule.id === "video" ? Number(uploaded.size ?? file.size ?? 0) : prev.fileSize ?? 0,
+        fileSize: activeModule.id === "video" ? getUploadedFileSize(uploaded, file) : prev.fileSize ?? 0,
       }));
       setToast(`${getUploadKind(activeModule.id)}上傳成功：${file.name}`);
     } catch (error) {
@@ -1066,7 +1066,19 @@ function toStrapiFieldValue(value: string | number | boolean | undefined, field:
   if ((field.type === "date" || field.type === "datetime") && String(value ?? "").trim() === "") {
     return null;
   }
+  if (field.key === "fileSize") {
+    return Math.round(Number(value || 0));
+  }
   return value ?? "";
+}
+
+function getUploadedFileSize(uploaded: Record<string, unknown>, file: File) {
+  if (Number.isFinite(file.size) && file.size > 0) {
+    return Math.round(file.size);
+  }
+
+  const uploadedSize = Number(uploaded.size ?? 0);
+  return Math.round(uploadedSize * 1024);
 }
 
 function coerceFieldValue(value: unknown, field: FieldDef) {
