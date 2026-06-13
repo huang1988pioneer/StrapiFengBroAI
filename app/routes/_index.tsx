@@ -132,6 +132,17 @@ const mediaFields: FieldDef[] = [
   { key: "note", label: "備註", type: "textarea" },
 ];
 
+const imageFields: FieldDef[] = [
+  { key: "name", label: "名稱", required: true },
+  { key: "file", label: "圖片 URL", type: "url" },
+  { key: "filetype", label: "檔案類型" },
+  { key: "note", label: "備註", type: "textarea" },
+  { key: "ref", label: "來源/參考", type: "url" },
+  { key: "category", label: "分類" },
+  { key: "hash", label: "Hash" },
+  { key: "cover", label: "封面 URL", type: "url" },
+];
+
 const modules: ModuleDef[] = [
   { id: "subscription", label: "鋒兄訂閱", subtitle: "續訂、扣款與提醒", icon: <Archive />, fields: subscriptionFields, apiPath: "subscriptions", seedCsv: subscriptionCsv },
   {
@@ -192,7 +203,7 @@ const modules: ModuleDef[] = [
       ]),
     ],
   },
-  { id: "image", label: "鋒兄圖片", subtitle: "圖片素材庫", icon: <Image />, fields: mediaFields, apiPath: "images" },
+  { id: "image", label: "鋒兄圖片", subtitle: "圖片素材庫", icon: <Image />, fields: imageFields, apiPath: "images" },
   { id: "video", label: "鋒兄影片", subtitle: "影片與頻道", icon: <Film />, fields: mediaFields, apiPath: "videos" },
   { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: mediaFields, apiPath: "music" },
   { id: "document", label: "鋒兄文件", subtitle: "文件與檔案", icon: <FileText />, fields: mediaFields, apiPath: "commondocuments" },
@@ -276,6 +287,7 @@ const moduleMap = new Map(flattenModules(modules).map((item) => [item.id, item])
 
 export default function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageUploadRef = useRef<HTMLInputElement>(null);
   const [activeId, setActiveId] = useState("subscription");
   const activeModule = moduleMap.get(activeId) ?? modules[0];
   const [recordsByModule, setRecordsByModule] = useState<Record<string, ItemRecord[]>>({});
@@ -529,6 +541,34 @@ export default function Index() {
     }
   }
 
+  async function uploadImageFile(file: File) {
+    if (!hasStrapiConfig(settings)) {
+      setToast("請先到鋒兄設定填寫 Strapi URL 和 Strapi API Token");
+      return;
+    }
+
+    setLoading(true);
+    setToast(`正在上傳圖片：${file.name}`);
+    try {
+      const uploaded = await strapiUploadFile(settings, file);
+      const url = getStrapiAssetUrl(settings, String(uploaded.url ?? ""));
+      setDraft((prev) => ({
+        ...prev,
+        name: String(prev.name || file.name.replace(/\.[^.]+$/, "")),
+        file: url,
+        cover: url,
+        filetype: String(uploaded.mime ?? file.type ?? ""),
+        hash: String(uploaded.hash ?? ""),
+      }));
+      setToast(`圖片上傳成功：${file.name}`);
+    } catch (error) {
+      setToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+      if (imageUploadRef.current) imageUploadRef.current.value = "";
+    }
+  }
+
   function exportCsv() {
     const csv = toCsv(records, activeModule.fields.map((field) => field.key));
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
@@ -698,6 +738,24 @@ export default function Index() {
             </div>
 
             <div className="editor-actions">
+              {activeModule.id === "image" ? (
+                <>
+                  <input
+                    ref={imageUploadRef}
+                    className="file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadImageFile(file);
+                    }}
+                  />
+                  <button className="tool-button" type="button" onClick={() => imageUploadRef.current?.click()} disabled={loading}>
+                    <Upload size={16} />
+                    上傳圖片
+                  </button>
+                </>
+              ) : null}
               <button className="primary-button" type="button" onClick={saveRecord} disabled={loading}>
                 {loading ? "處理中..." : editingId ? "儲存修改" : "建立資料"}
               </button>
@@ -868,6 +926,43 @@ async function strapiRequest(settings: ItemRecord, path: string, method: "GET" |
 
   if (response.status === 204) return null;
   return response.json();
+}
+
+async function strapiUploadFile(settings: ItemRecord, file: File) {
+  const baseUrl = String(settings.strapiUrl ?? "").replace(/\/+$/, "");
+  const token = String(settings.apiToken ?? "").trim();
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const response = await fetch(`${baseUrl}/api/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const errorBody = await response.json();
+      detail = errorBody?.error?.message ? `：${errorBody.error.message}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`Strapi 圖片上傳失敗 (${response.status})${detail}`);
+  }
+
+  const uploaded = await response.json();
+  const firstFile = Array.isArray(uploaded) ? uploaded[0] : uploaded;
+  if (!firstFile?.url) throw new Error("Strapi 圖片上傳成功但沒有回傳 URL");
+  return firstFile as Record<string, unknown>;
+}
+
+function getStrapiAssetUrl(settings: ItemRecord, url: string) {
+  if (/^https?:\/\//i.test(url)) return url;
+  const baseUrl = String(settings.strapiUrl ?? "").replace(/\/+$/, "");
+  return `${baseUrl}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
 function strapiListToRecords(payload: unknown, moduleDef: ModuleDef): ItemRecord[] {
