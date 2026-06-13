@@ -14,6 +14,27 @@ Remix 版鋒兄資料庫 CRUD 工作台，配合 `huang1988pioneer/Strapihuang19
 - 支援 CSV 匯入至 Strapi 與從 Strapi 匯出 CSV，包含 Appwrite 常見的雙引號與多行備註
 - 內建訂閱、食品、筆記、常用、銀行、例行的範例 CSV 資料
 - 鋒兄設定極簡化為 Strapi URL、Strapi API Token
+- 鋒兄設定提供「測試連線」，會用目前表單內容測試 `Subscription` API 讀取權限
+
+## Strapi CRUD 對應
+
+目前有對應 Strapi collection API 的選單會直接 CRUD：
+
+- 鋒兄訂閱：`/api/subscriptions`
+- 鋒兄食品：`/api/foods`
+- 鋒兄筆記：`/api/articles`
+- 鋒兄常用：`/api/commonaccounts`
+- 鋒兄圖片：`/api/images`
+- 鋒兄影片：`/api/videos`
+- 鋒兄音樂：`/api/music`
+- 鋒兄文件：`/api/commondocuments`
+- 鋒兄播客：`/api/podcasts`
+- 鋒兄銀行：`/api/banks`
+- 鋒兄例行：`/api/routines`
+- 鋒兄比價：`/api/tool-price-histories`
+
+手機比價、鋒兄Tube、鋒兄金融若要真正 CRUD，需要先在 Strapi 新增對應
+collection type，並在前端補上 API path。
 
 ## Token 注意事項
 

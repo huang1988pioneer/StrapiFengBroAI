@@ -496,6 +496,30 @@ export default function Index() {
     }
   }
 
+  async function testStrapiConnection() {
+    const testSettings = activeModule.id === "settings"
+      ? { ...settings, ...normalizeDraft(draft, activeModule), id: "settings", updatedAt: nowIso() }
+      : settings;
+
+    if (!hasStrapiConfig(testSettings)) {
+      setToast("請先填寫 Strapi URL 和 Strapi API Token");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = await strapiRequest(testSettings, "subscriptions", "GET");
+      const count = Array.isArray((payload as { data?: unknown })?.data)
+        ? (payload as { data: unknown[] }).data.length
+        : 0;
+      setToast(`Strapi 連線成功：Subscription API 可讀取，目前回傳 ${count} 筆`);
+    } catch (error) {
+      setToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function exportCsv() {
     const csv = toCsv(records, activeModule.fields.map((field) => field.key));
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
@@ -654,6 +678,11 @@ export default function Index() {
               <button className="primary-button" type="button" onClick={saveRecord} disabled={loading}>
                 {loading ? "處理中..." : editingId ? "儲存修改" : "建立資料"}
               </button>
+              {activeModule.id === "settings" ? (
+                <button className="tool-button" type="button" onClick={testStrapiConnection} disabled={loading}>
+                  測試連線
+                </button>
+              ) : null}
               <button
                 className="ghost-button"
                 type="button"
