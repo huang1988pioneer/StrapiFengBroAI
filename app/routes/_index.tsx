@@ -579,7 +579,7 @@ export default function Index() {
         name: String(prev.name || file.name.replace(/\.[^.]+$/, "")),
         file: url,
         cover: url,
-        filetype: String(uploaded.mime ?? file.type ?? ""),
+        filetype: normalizeFileType(uploaded, file),
         hash: String(uploaded.hash ?? ""),
         fileSize: activeModule.id === "video" ? getUploadedFileSize(uploaded, file) : prev.fileSize ?? 0,
       }));
@@ -1083,7 +1083,32 @@ function toStrapiFieldValue(value: string | number | boolean | undefined, field:
   if (field.key === "fileSize") {
     return Math.round(Number(value || 0));
   }
+  if (field.key === "filetype") {
+    return normalizeFileTypeValue(value);
+  }
   return value ?? "";
+}
+
+function normalizeFileType(uploaded: Record<string, unknown>, file: File) {
+  const extension = file.name.includes(".") ? file.name.split(".").pop() : "";
+  if (extension) return extension.toLowerCase().slice(0, 20);
+  return normalizeFileTypeValue(String(uploaded.ext ?? uploaded.mime ?? file.type ?? ""));
+}
+
+function normalizeFileTypeValue(value: string | number | boolean | undefined) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+
+  const extension = text.startsWith(".") ? text.slice(1) : "";
+  if (extension && extension.length <= 20) return extension.toLowerCase();
+
+  if (text.includes("/")) {
+    const subtype = text.split("/").pop() ?? text;
+    const lastPart = subtype.split(".").pop() ?? subtype;
+    return lastPart.toLowerCase().slice(0, 20);
+  }
+
+  return text.slice(0, 20);
 }
 
 function getUploadedFileSize(uploaded: Record<string, unknown>, file: File) {
