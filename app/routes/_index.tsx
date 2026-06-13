@@ -780,6 +780,13 @@ export default function Index() {
               </div>
             ) : null}
 
+            {activeModule.id === "document" && String(draft.file ?? "").trim() ? (
+              <div className="image-preview-panel">
+                <span>檔案預覽</span>
+                <DocumentPreview url={String(draft.file)} filetype={String(draft.filetype ?? "")} title={String(draft.name ?? "鋒兄文件")} large />
+              </div>
+            ) : null}
+
             <div className="editor-actions">
               {isUploadModule(activeModule.id) ? (
                 <>
@@ -1193,6 +1200,9 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
       </div>
     );
   }
+  if (moduleDef.id === "document" && isDocumentFileCell(field, value)) {
+    return <DocumentPreview url={String(value)} filetype="" title="鋒兄文件" />;
+  }
   if (field.type === "url" && value) {
     return (
       <a href={String(value)} target="_blank" rel="noreferrer">
@@ -1212,6 +1222,39 @@ function isMediaFileCell(moduleDef: ModuleDef, field: FieldDef, value: string | 
   const text = String(value);
   if (!/^https?:\/\//i.test(text)) return false;
   return field.key === "file" || field.key === "url" || field.type === "url";
+}
+
+function isDocumentFileCell(field: FieldDef, value: string | number | boolean) {
+  if (!value) return false;
+  const text = String(value);
+  if (!/^https?:\/\//i.test(text)) return false;
+  return field.key === "file" || field.key === "url" || field.type === "url";
+}
+
+function DocumentPreview({ url, filetype, title, large = false }: { url: string; filetype: string; title: string; large?: boolean }) {
+  const type = getDocumentType(url, filetype);
+  const filename = decodeURIComponent(url.split("/").pop()?.split("?")[0] || title || "file");
+
+  return (
+    <div className={large ? "document-preview document-preview-large" : "document-preview"}>
+      {type === "pdf" ? <iframe src={url} title={title || filename} loading="lazy" /> : null}
+      <div className="document-preview-body">
+        <strong>{filename}</strong>
+        <span>{type.toUpperCase()}</span>
+        <a href={url} target="_blank" rel="noreferrer">
+          開啟檔案
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function getDocumentType(url: string, filetype: string) {
+  const normalized = String(filetype || "").trim().toLowerCase();
+  if (normalized) return normalized.replace(/^\./, "").slice(0, 20);
+  const pathname = url.split("?")[0] ?? "";
+  const extension = pathname.includes(".") ? pathname.split(".").pop() : "";
+  return (extension || "file").toLowerCase().slice(0, 20);
 }
 
 function formatNumber(value: number) {

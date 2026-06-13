@@ -445,6 +445,51 @@ td {
   line-height: 1.45;
 }
 
+.document-preview {
+  display: grid;
+  width: 240px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+}
+
+.document-preview iframe {
+  width: 100%;
+  height: 180px;
+  border: 0;
+  background: #edf4f2;
+}
+
+.document-preview-body {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+}
+
+.document-preview-body strong {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.document-preview-body span {
+  width: fit-content;
+  border-radius: 999px;
+  background: #edf4f2;
+  color: #44514c;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.document-preview-body a {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .empty-cell {
   height: 180px;
   color: var(--muted);
@@ -567,6 +612,14 @@ td {
 
 .image-preview-panel audio {
   width: 100%;
+}
+
+.image-preview-panel .document-preview {
+  width: 100%;
+}
+
+.document-preview-large iframe {
+  height: 360px;
 }
 
 .csv-note {
