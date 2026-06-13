@@ -773,7 +773,7 @@ export default function Index() {
               </div>
             ) : null}
 
-            {activeModule.id === "music" && String(draft.file ?? "").trim() ? (
+            {isAudioModule(activeModule.id) && String(draft.file ?? "").trim() ? (
               <div className="image-preview-panel">
                 <span>音樂預覽</span>
                 <audio src={String(draft.file)} controls preload="metadata" />
@@ -1183,7 +1183,7 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
       </div>
     );
   }
-  if (isMediaFileCell(moduleDef, field, value, "music")) {
+  if (isAudioModule(moduleDef.id) && isMediaFileCell(moduleDef, field, value, "audio")) {
     return (
       <div className="media-cell audio-cell">
         <audio src={String(value)} controls preload="metadata" />
@@ -1203,8 +1203,12 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
   return String(value ?? "") || "-";
 }
 
-function isMediaFileCell(moduleDef: ModuleDef, field: FieldDef, value: string | number | boolean, mediaId: "video" | "music") {
-  if (moduleDef.id !== mediaId || !value) return false;
+function isAudioModule(moduleId: string) {
+  return moduleId === "music" || moduleId === "podcast";
+}
+
+function isMediaFileCell(moduleDef: ModuleDef, field: FieldDef, value: string | number | boolean, mediaId: "video" | "audio") {
+  if ((mediaId === "video" && moduleDef.id !== "video") || (mediaId === "audio" && !isAudioModule(moduleDef.id)) || !value) return false;
   const text = String(value);
   if (!/^https?:\/\//i.test(text)) return false;
   return field.key === "file" || field.key === "url" || field.type === "url";
