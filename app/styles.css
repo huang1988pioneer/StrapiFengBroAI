@@ -395,6 +395,28 @@ td {
   overflow-wrap: anywhere;
 }
 
+.image-cell {
+  display: grid;
+  width: 160px;
+  gap: 8px;
+}
+
+.image-cell img {
+  width: 120px;
+  height: 90px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #edf4f2;
+  object-fit: cover;
+}
+
+.image-cell span {
+  display: block;
+  color: var(--teal);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .empty-cell {
   height: 180px;
   color: var(--muted);
@@ -484,6 +506,27 @@ td {
 
 .editor-actions {
   margin-top: 14px;
+}
+
+.image-preview-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.image-preview-panel span {
+  color: #44514c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.image-preview-panel img {
+  width: 100%;
+  max-height: 260px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #edf4f2;
+  object-fit: contain;
 }
 
 .csv-note {

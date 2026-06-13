@@ -709,7 +709,7 @@ export default function Index() {
                     visibleRecords.map((record) => (
                       <tr key={record.id}>
                         {activeModule.fields.slice(0, 6).map((field) => (
-                          <td key={field.key}>{renderCell(record[field.key], field)}</td>
+                          <td key={field.key}>{renderCell(record[field.key], field, activeModule)}</td>
                         ))}
                         <td>
                           <div className="row-actions">
@@ -759,6 +759,12 @@ export default function Index() {
                 </label>
               ))}
             </div>
+            {activeModule.id === "image" && String(draft.file ?? draft.cover ?? "").trim() ? (
+              <div className="image-preview-panel">
+                <span>圖片預覽</span>
+                <img src={String(draft.file || draft.cover)} alt={String(draft.name || "鋒兄圖片預覽")} />
+              </div>
+            ) : null}
 
             <div className="editor-actions">
               {isUploadModule(activeModule.id) ? (
@@ -1106,8 +1112,16 @@ function getRecordTitle(record: Record<string, unknown>, moduleDef: ModuleDef) {
   return `${moduleDef.label}資料`;
 }
 
-function renderCell(value: string | number | boolean, field: FieldDef) {
+function renderCell(value: string | number | boolean, field: FieldDef, moduleDef: ModuleDef) {
   if (field.type === "boolean") return value ? "true" : "false";
+  if (moduleDef.id === "image" && (field.key === "file" || field.key === "cover") && value) {
+    return (
+      <a className="image-cell" href={String(value)} target="_blank" rel="noreferrer">
+        <img src={String(value)} alt="鋒兄圖片縮圖" loading="lazy" />
+        <span>{String(value)}</span>
+      </a>
+    );
+  }
   if (field.type === "url" && value) {
     return (
       <a href={String(value)} target="_blank" rel="noreferrer">
