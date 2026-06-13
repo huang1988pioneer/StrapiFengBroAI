@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   Banknote,
@@ -7,6 +7,7 @@ import {
   Check,
   ChevronDown,
   Download,
+  ExternalLink,
   FileAudio,
   FileText,
   Film,
@@ -35,6 +36,7 @@ type FieldDef = {
   placeholder?: string;
   required?: boolean;
   strapiKey?: string;
+  defaultValue?: string | number | boolean;
 };
 
 type ModuleDef = {
@@ -55,11 +57,97 @@ type ItemRecord = {
   [key: string]: string | number | boolean;
 };
 
+type ToolLink = {
+  label: string;
+  hint: string;
+  url: (query: string) => string;
+};
+
+type ToolPreset = {
+  title: string;
+  description: string;
+  badge: string;
+  placeholder: string;
+  defaultQuery: string;
+  defaultSource: string;
+  notice: string;
+  links: ToolLink[];
+};
+
 const nowIso = () => new Date().toISOString();
 const storagePrefix = "fengbro-remix-crud";
 const settingsStorageKey = `${storagePrefix}:settings`;
 const defaultStrapiUrl = import.meta.env.VITE_STRAPI_URL || "";
 const defaultStrapiApiToken = import.meta.env.VITE_STRAPI_API_TOKEN || "";
+
+const yahooFinanceSymbols = "2330.TW ^TWII USDTWD=X BTC-USD ^GSPC ^IXIC";
+
+function searchUrl(base: string, query: string) {
+  return `${base}${encodeURIComponent(query.trim())}`;
+}
+
+function getToolPreset(moduleId: string): ToolPreset | null {
+  const presets: Record<string, ToolPreset> = {
+    price: {
+      title: "鋒兄比價",
+      description: "參考 Appwrite 的 BigGo/商品價格追蹤流程，建立商品價格快照。",
+      badge: "Price",
+      placeholder: "貼上商品網址或輸入商品名稱",
+      defaultQuery: "KIOXIA Exceria Plus G3 1TB",
+      defaultSource: "BigGo / PChome / momo",
+      notice: "查詢後可填入目前價格、最高價格、最低價格並建立 Strapi 快照。",
+      links: [
+        { label: "BigGo", hint: "商品比價搜尋", url: (query) => searchUrl("https://biggo.com.tw/s/", query) },
+        { label: "PChome", hint: "24h 商品搜尋", url: (query) => searchUrl("https://ecshweb.pchome.com.tw/search/v3.3/?q=", query) },
+        { label: "momo", hint: "momo 商品搜尋", url: (query) => searchUrl("https://www.momoshop.com.tw/search/searchShop.jsp?keyword=", query) },
+      ],
+    },
+    "phone-price": {
+      title: "手機比價",
+      description: "參考 Appwrite 的 landtop 手機比價，快速開啟地標網通、傑昇通信與品牌搜尋。",
+      badge: "Phone",
+      placeholder: "例如 iPhone 17 512GB、Samsung S26 256GB",
+      defaultQuery: "iPhone 17 512GB",
+      defaultSource: "地標網通 / 傑昇通信",
+      notice: "可記錄地標價、建議售價或最低通路價。",
+      links: [
+        { label: "地標網通", hint: "手機通路搜尋", url: (query) => searchUrl("https://www.landtop.com.tw/search?keyword=", query) },
+        { label: "傑昇通信", hint: "手機價格搜尋", url: (query) => searchUrl("https://www.jyes.com.tw/search?q=", query) },
+        { label: "SOGI 手機王", hint: "規格與價格", url: (query) => searchUrl("https://www.sogi.com.tw/search?keyword=", query) },
+      ],
+    },
+    tube: {
+      title: "鋒兄Tube",
+      description: "參考 Appwrite 的 FengBro Tube，管理頻道/影片查詢與追蹤紀錄。",
+      badge: "Tube",
+      placeholder: "輸入 YouTube 關鍵字、頻道名稱或影片主題",
+      defaultQuery: "鋒兄 AI",
+      defaultSource: "YouTube",
+      notice: "可把頻道、影片或播放清單 URL 記錄成 Tube 追蹤項目。",
+      links: [
+        { label: "YouTube 搜尋", hint: "影片搜尋", url: (query) => searchUrl("https://www.youtube.com/results?search_query=", query) },
+        { label: "YouTube 頻道", hint: "頻道搜尋", url: (query) => searchUrl("https://www.youtube.com/results?sp=EgIQAg%253D%253D&search_query=", query) },
+        { label: "Bilibili 搜尋", hint: "補充影音來源", url: (query) => searchUrl("https://search.bilibili.com/all?keyword=", query) },
+      ],
+    },
+    finance: {
+      title: "鋒兄金融",
+      description: "參考 Appwrite 的 CNBC/Yahoo Finance 監控，建立股價、匯率、指數與加密資產觀察清單。",
+      badge: "Finance",
+      placeholder: `例如 ${yahooFinanceSymbols}`,
+      defaultQuery: "2330.TW",
+      defaultSource: "Yahoo Finance / Google Finance",
+      notice: "可記錄目前價格、52 週高低或警戒價。",
+      links: [
+        { label: "Yahoo Finance", hint: "報價與走勢", url: (query) => searchUrl("https://finance.yahoo.com/quote/", query.split(/\s+/)[0] || query) },
+        { label: "Google Finance", hint: "金融搜尋", url: (query) => searchUrl("https://www.google.com/finance/quote/", query.split(/\s+/)[0] || query) },
+        { label: "TradingView", hint: "圖表搜尋", url: (query) => searchUrl("https://www.tradingview.com/search/?query=", query) },
+      ],
+    },
+  };
+
+  return presets[moduleId] ?? null;
+}
 
 const subscriptionCsv = `name,site,price,nextdate,note,account,currency,continue
 小北百貨連續簽到,,0,2026-06-07,"~0607
@@ -130,6 +218,18 @@ const mediaFields: FieldDef[] = [
   { key: "category", label: "分類" },
   { key: "date", label: "日期", type: "date" },
   { key: "note", label: "備註", type: "textarea" },
+];
+
+const toolPriceFields: FieldDef[] = [
+  { key: "toolType", label: "工具類型", required: true },
+  { key: "queryText", label: "查詢內容", required: true },
+  { key: "title", label: "標題" },
+  { key: "source", label: "來源" },
+  { key: "currentPrice", label: "目前價格", type: "number" },
+  { key: "highPrice", label: "最高價格", type: "number" },
+  { key: "lowPrice", label: "最低價格", type: "number" },
+  { key: "resultUrl", label: "結果 URL", type: "url" },
+  { key: "notice", label: "備註", type: "textarea" },
 ];
 
 const imageFields: FieldDef[] = [
@@ -305,7 +405,34 @@ const modules: ModuleDef[] = [
   },
 ];
 
-const moduleMap = new Map(flattenModules(modules).map((item) => [item.id, item]));
+const modulesWithToolConfig = configureToolModules(modules);
+const moduleMap = new Map(flattenModules(modulesWithToolConfig).map((item) => [item.id, item]));
+
+function configureToolModules(sourceModules: ModuleDef[]) {
+  return sourceModules.map((moduleDef) => {
+    if (moduleDef.id !== "tools" || !moduleDef.children) return moduleDef;
+    return {
+      ...moduleDef,
+      children: moduleDef.children.map((child) =>
+        isToolModule(child.id)
+          ? {
+              ...child,
+              apiPath: "tool-price-histories",
+              fields: getToolFields(child.id),
+            }
+          : child,
+      ),
+    };
+  });
+}
+
+function getToolFields(toolType: string) {
+  return toolPriceFields.map((field) => (field.key === "toolType" ? { ...field, defaultValue: toolType } : field));
+}
+
+function isToolModule(moduleId: string) {
+  return ["price", "phone-price", "tube", "finance"].includes(moduleId);
+}
 
 export default function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -349,7 +476,7 @@ export default function Index() {
   const stats = useMemo(() => {
     const total = records.length;
     const numericTotal = records.reduce((sum, record) => {
-      const price = Number(record.price ?? record.deposit ?? record.amount ?? 0);
+      const price = Number(record.price ?? record.currentPrice ?? record.deposit ?? record.amount ?? 0);
       return Number.isFinite(price) ? sum + price : sum;
     }, 0);
     return { total, numericTotal };
@@ -380,7 +507,8 @@ export default function Index() {
     setLoading(true);
     try {
       const payload = await strapiRequest(settings, moduleDef.apiPath, "GET");
-      setModuleRecords(moduleDef.id, strapiListToRecords(payload, moduleDef));
+      const loadedRecords = strapiListToRecords(payload, moduleDef);
+      setModuleRecords(moduleDef.id, isToolModule(moduleDef.id) ? loadedRecords.filter((record) => record.toolType === moduleDef.id) : loadedRecords);
       setToast(`已從 Strapi 載入 ${moduleDef.label}`);
     } catch (error) {
       setModuleRecords(moduleDef.id, []);
@@ -615,7 +743,7 @@ export default function Index() {
           </div>
         </div>
         <nav className="nav-list" aria-label="鋒兄模組">
-          {modules.map((item) => (
+          {modulesWithToolConfig.map((item) => (
             <NavItem key={item.id} item={item} activeId={activeId} onSelect={setActiveId} />
           ))}
         </nav>
@@ -646,6 +774,10 @@ export default function Index() {
           <Metric label="欄位數" value={String(activeModule.fields.length)} />
           <Metric label="CSV" value="匯入 / 匯出" />
         </section>
+
+        {isToolModule(activeModule.id) ? (
+          <ToolWorkspace moduleId={activeModule.id} draft={draft} setDraft={setDraft} setToast={setToast} />
+        ) : null}
 
         <section className="content-grid">
           <div className="table-panel">
@@ -891,6 +1023,81 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ToolWorkspace({
+  moduleId,
+  draft,
+  setDraft,
+  setToast,
+}: {
+  moduleId: string;
+  draft: Record<string, string | number | boolean>;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  setToast: Dispatch<SetStateAction<string>>;
+}) {
+  const preset = getToolPreset(moduleId);
+  if (!preset) return null;
+  const toolPreset = preset;
+  const query = String(draft.queryText ?? toolPreset.defaultQuery);
+
+  function applyQuery(nextQuery = query) {
+    setDraft((prev) => ({
+      ...prev,
+      toolType: moduleId,
+      queryText: nextQuery,
+      title: nextQuery || toolPreset.title,
+      source: toolPreset.defaultSource,
+      resultUrl: toolPreset.links[0]?.url(nextQuery) || "",
+      notice: String(prev.notice || toolPreset.notice),
+    }));
+  }
+
+  function openLink(link: ToolLink) {
+    const nextQuery = query.trim() || toolPreset.defaultQuery;
+    applyQuery(nextQuery);
+    window.open(link.url(nextQuery), "_blank", "noopener,noreferrer");
+    setToast(`已開啟 ${link.label}：${nextQuery}`);
+  }
+
+  return (
+    <section className="tool-workspace">
+      <div className="tool-workspace-head">
+        <div>
+          <strong>{toolPreset.title}</strong>
+          <p>{toolPreset.description}</p>
+        </div>
+        <span>{toolPreset.badge}</span>
+      </div>
+      <div className="tool-query-row">
+        <label className="search-box">
+          <Search size={16} />
+          <input
+            value={query}
+            onChange={(event) => {
+              const value = event.target.value;
+              setDraft((prev) => ({ ...prev, toolType: moduleId, queryText: value }));
+            }}
+            onBlur={() => applyQuery()}
+            placeholder={toolPreset.placeholder}
+          />
+        </label>
+        <button type="button" className="primary-button" onClick={() => applyQuery()}>
+          <Check size={16} />
+          套用
+        </button>
+      </div>
+      <div className="tool-link-grid">
+        {toolPreset.links.map((link) => (
+          <button key={link.label} type="button" className="tool-link-card" onClick={() => openLink(link)}>
+            <ExternalLink size={16} />
+            <span>{link.label}</span>
+            <small>{link.hint}</small>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function FieldInput({
   field,
   value,
@@ -1090,6 +1297,9 @@ function toStrapiFieldValue(value: string | number | boolean | undefined, field:
   if (field.key === "fileSize") {
     return Math.round(Number(value || 0));
   }
+  if (field.type === "number") {
+    return Math.round(Number(value || 0));
+  }
   if (field.key === "filetype") {
     return normalizeFileTypeValue(value);
   }
@@ -1138,7 +1348,12 @@ function getErrorMessage(error: unknown) {
 }
 
 function getEmptyDraft(moduleDef: ModuleDef) {
-  return Object.fromEntries(moduleDef.fields.map((field) => [field.key, field.type === "number" ? 0 : field.type === "boolean" ? false : ""]));
+  return Object.fromEntries(
+    moduleDef.fields.map((field) => [
+      field.key,
+      field.defaultValue ?? (field.type === "number" ? 0 : field.type === "boolean" ? false : ""),
+    ]),
+  );
 }
 
 function normalizeDraft(draft: Record<string, string | number | boolean>, moduleDef: ModuleDef) {
@@ -1165,7 +1380,7 @@ function rowsToRecords(rows: Record<string, string>[], moduleDef: ModuleDef): It
 }
 
 function getRecordTitle(record: Record<string, unknown>, moduleDef: ModuleDef) {
-  const preferred = ["name", "title"].find((key) => record[key]);
+  const preferred = ["name", "title", "queryText"].find((key) => record[key]);
   if (preferred) return String(record[preferred]);
   return `${moduleDef.label}資料`;
 }
