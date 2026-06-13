@@ -773,6 +773,13 @@ export default function Index() {
               </div>
             ) : null}
 
+            {activeModule.id === "music" && String(draft.file ?? "").trim() ? (
+              <div className="image-preview-panel">
+                <span>音樂預覽</span>
+                <audio src={String(draft.file)} controls preload="metadata" />
+              </div>
+            ) : null}
+
             <div className="editor-actions">
               {isUploadModule(activeModule.id) ? (
                 <>
@@ -1145,6 +1152,16 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
     return (
       <div className="media-cell">
         <video src={String(value)} controls preload="metadata" />
+        <a href={String(value)} target="_blank" rel="noreferrer">
+          {String(value)}
+        </a>
+      </div>
+    );
+  }
+  if (moduleDef.id === "music" && field.key === "file" && value) {
+    return (
+      <div className="media-cell audio-cell">
+        <audio src={String(value)} controls preload="metadata" />
         <a href={String(value)} target="_blank" rel="noreferrer">
           {String(value)}
         </a>

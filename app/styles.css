@@ -431,6 +431,14 @@ td {
   background: #16211d;
 }
 
+.media-cell audio {
+  width: 220px;
+}
+
+.audio-cell {
+  width: 240px;
+}
+
 .media-cell a {
   color: var(--teal);
   font-size: 12px;
@@ -555,6 +563,10 @@ td {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #16211d;
+}
+
+.image-preview-panel audio {
+  width: 100%;
 }
 
 .csv-note {
