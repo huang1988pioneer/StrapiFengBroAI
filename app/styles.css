@@ -417,6 +417,26 @@ td {
   line-height: 1.45;
 }
 
+.media-cell {
+  display: grid;
+  width: 220px;
+  gap: 8px;
+}
+
+.media-cell video {
+  width: 220px;
+  height: 124px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #16211d;
+}
+
+.media-cell a {
+  color: var(--teal);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .empty-cell {
   height: 180px;
   color: var(--muted);
@@ -527,6 +547,14 @@ td {
   border-radius: 12px;
   background: #edf4f2;
   object-fit: contain;
+}
+
+.image-preview-panel video {
+  width: 100%;
+  max-height: 280px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #16211d;
 }
 
 .csv-note {

@@ -766,6 +766,13 @@ export default function Index() {
               </div>
             ) : null}
 
+            {activeModule.id === "video" && String(draft.file ?? "").trim() ? (
+              <div className="image-preview-panel">
+                <span>影片預覽</span>
+                <video src={String(draft.file)} controls preload="metadata" />
+              </div>
+            ) : null}
+
             <div className="editor-actions">
               {isUploadModule(activeModule.id) ? (
                 <>
@@ -1132,6 +1139,16 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
         <img src={String(value)} alt="鋒兄圖片縮圖" loading="lazy" />
         <span>{String(value)}</span>
       </a>
+    );
+  }
+  if (moduleDef.id === "video" && field.key === "file" && value) {
+    return (
+      <div className="media-cell">
+        <video src={String(value)} controls preload="metadata" />
+        <a href={String(value)} target="_blank" rel="noreferrer">
+          {String(value)}
+        </a>
+      </div>
     );
   }
   if (field.type === "url" && value) {
