@@ -422,6 +422,7 @@ export default function Index() {
   async function deleteRecord(id: string) {
     const target = records.find((record) => record.id === id);
     if (activeModule.id === "settings") {
+      if (!window.confirm("確定要清空 Strapi URL / API Token 設定嗎？")) return;
       const nextSettings = getDefaultSettingsRecord();
       saveSettings(nextSettings);
       setDraft(settingsToDraft(nextSettings));
@@ -429,6 +430,8 @@ export default function Index() {
       return;
     }
     if (!activeModule.apiPath || !target) return;
+    const title = getRecordTitle(target, activeModule);
+    if (!window.confirm(`確定要從 Strapi 刪除「${title}」嗎？\n\n此操作無法復原。`)) return;
 
     setLoading(true);
     try {
