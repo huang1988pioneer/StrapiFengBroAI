@@ -874,8 +874,15 @@ function strapiEntryToRecord(entry: unknown, moduleDef: ModuleDef): ItemRecord {
 
 function toStrapiData(record: Record<string, string | number | boolean>, moduleDef: ModuleDef) {
   return Object.fromEntries(
-    moduleDef.fields.map((field) => [field.strapiKey ?? field.key, record[field.key] ?? ""]),
+    moduleDef.fields.map((field) => [field.strapiKey ?? field.key, toStrapiFieldValue(record[field.key], field)]),
   );
+}
+
+function toStrapiFieldValue(value: string | number | boolean | undefined, field: FieldDef) {
+  if ((field.type === "date" || field.type === "datetime") && String(value ?? "").trim() === "") {
+    return null;
+  }
+  return value ?? "";
 }
 
 function coerceFieldValue(value: unknown, field: FieldDef) {
