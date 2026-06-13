@@ -227,7 +227,7 @@ const modules: ModuleDef[] = [
   },
   { id: "image", label: "鋒兄圖片", subtitle: "圖片素材庫", icon: <Image />, fields: imageFields, apiPath: "images" },
   { id: "video", label: "鋒兄影片", subtitle: "影片與頻道", icon: <Film />, fields: videoFields, apiPath: "videos" },
-  { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: musicFields, apiPath: "music" },
+  { id: "music", label: "鋒兄音樂", subtitle: "歌曲與歌詞", icon: <Music />, fields: musicFields, apiPath: "music-items" },
   { id: "document", label: "鋒兄文件", subtitle: "文件與檔案", icon: <FileText />, fields: fileAssetFields, apiPath: "commondocuments" },
   { id: "podcast", label: "鋒兄播客", subtitle: "播客清單", icon: <FileAudio />, fields: fileAssetFields, apiPath: "podcasts" },
   {
