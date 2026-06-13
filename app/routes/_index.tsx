@@ -1148,7 +1148,7 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
       </a>
     );
   }
-  if (moduleDef.id === "video" && field.key === "file" && value) {
+  if (isMediaFileCell(moduleDef, field, value, "video")) {
     return (
       <div className="media-cell">
         <video src={String(value)} controls preload="metadata" />
@@ -1158,7 +1158,7 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
       </div>
     );
   }
-  if (moduleDef.id === "music" && field.key === "file" && value) {
+  if (isMediaFileCell(moduleDef, field, value, "music")) {
     return (
       <div className="media-cell audio-cell">
         <audio src={String(value)} controls preload="metadata" />
@@ -1176,6 +1176,13 @@ function renderCell(value: string | number | boolean, field: FieldDef, moduleDef
     );
   }
   return String(value ?? "") || "-";
+}
+
+function isMediaFileCell(moduleDef: ModuleDef, field: FieldDef, value: string | number | boolean, mediaId: "video" | "music") {
+  if (moduleDef.id !== mediaId || !value) return false;
+  const text = String(value);
+  if (!/^https?:\/\//i.test(text)) return false;
+  return field.key === "file" || field.key === "url" || field.type === "url";
 }
 
 function formatNumber(value: number) {
