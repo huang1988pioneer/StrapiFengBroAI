@@ -284,6 +284,7 @@ export default function Index() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | boolean>>({});
   const [loading, setLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ label: string; current: number; total: number } | null>(null);
   const [toast, setToast] = useState("已準備 Remix CRUD 工作台");
 
   useEffect(() => {
@@ -485,16 +486,21 @@ export default function Index() {
     }
 
     setLoading(true);
+    setImportProgress({ label, current: 0, total: rows.length });
     try {
-      for (const row of rows) {
+      for (const [index, row] of rows.entries()) {
         const normalized = normalizeDraft(row, moduleDef);
         await strapiRequest(settings, moduleDef.apiPath, "POST", toStrapiData(normalized, moduleDef));
+        const current = index + 1;
+        setImportProgress({ label, current, total: rows.length });
+        setToast(`正在匯入 ${moduleDef.label}：${current} / ${rows.length}`);
       }
       await loadRecords(moduleDef);
       setToast(`已匯入 ${rows.length} 筆 CSV 至 Strapi：${moduleDef.label}`);
     } catch (error) {
       setToast(getErrorMessage(error));
     } finally {
+      setImportProgress(null);
       setLoading(false);
     }
   }
@@ -600,16 +606,30 @@ export default function Index() {
                     if (file) void importCsv(file);
                   }}
                 />
-                <button type="button" className="tool-button" onClick={() => fileRef.current?.click()}>
+                <button type="button" className="tool-button" onClick={() => fileRef.current?.click()} disabled={loading}>
                   <Upload size={16} />
                   匯入 CSV
                 </button>
-                <button type="button" className="tool-button" onClick={exportCsv}>
+                <button type="button" className="tool-button" onClick={exportCsv} disabled={loading}>
                   <Download size={16} />
                   匯出 CSV
                 </button>
               </div>
             </div>
+            {importProgress ? (
+              <div className="import-progress" role="status" aria-live="polite">
+                <div className="import-progress-label">
+                  <span>匯入 {importProgress.label}</span>
+                  <strong>{importProgress.current} / {importProgress.total}</strong>
+                </div>
+                <div className="import-progress-track">
+                  <div
+                    className="import-progress-bar"
+                    style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
 
             <div className="table-wrap">
               <table>
