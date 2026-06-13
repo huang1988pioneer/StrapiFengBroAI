@@ -776,7 +776,7 @@ export default function Index() {
         </section>
 
         {isToolModule(activeModule.id) ? (
-          <ToolWorkspace moduleId={activeModule.id} draft={draft} setDraft={setDraft} setToast={setToast} />
+          <ToolWorkspace moduleId={activeModule.id} draft={draft} records={records} setActiveId={setActiveId} setDraft={setDraft} setToast={setToast} />
         ) : null}
 
         <section className="content-grid">
@@ -1026,11 +1026,15 @@ function Metric({ label, value }: { label: string; value: string }) {
 function ToolWorkspace({
   moduleId,
   draft,
+  records,
+  setActiveId,
   setDraft,
   setToast,
 }: {
   moduleId: string;
   draft: Record<string, string | number | boolean>;
+  records: ItemRecord[];
+  setActiveId: Dispatch<SetStateAction<string>>;
   setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
   setToast: Dispatch<SetStateAction<string>>;
 }) {
@@ -1060,12 +1064,23 @@ function ToolWorkspace({
 
   return (
     <section className="tool-workspace">
+      <div className="tool-tabs" aria-label="鋒兄工具">
+        {(["price", "phone-price", "tube", "finance"] as const).map((id) => {
+          const tabPreset = getToolPreset(id);
+          return (
+            <button key={id} type="button" className={moduleId === id ? "active" : ""} onClick={() => setActiveId(id)}>
+              {tabPreset?.title ?? id}
+            </button>
+          );
+        })}
+      </div>
       <div className="tool-workspace-head">
         <div>
+          <small>{toolPreset.badge}</small>
           <strong>{toolPreset.title}</strong>
           <p>{toolPreset.description}</p>
         </div>
-        <span>{toolPreset.badge}</span>
+        <span>更新：{new Date().toLocaleString("zh-TW")}</span>
       </div>
       <div className="tool-query-row">
         <label className="search-box">
@@ -1094,7 +1109,134 @@ function ToolWorkspace({
           </button>
         ))}
       </div>
+      <ToolShowcase moduleId={moduleId} query={query} records={records} />
     </section>
+  );
+}
+
+function ToolShowcase({ moduleId, query, records }: { moduleId: string; query: string; records: Array<Record<string, any>> }) {
+  if (moduleId === "phone-price") return <PhonePriceShowcase records={records} />;
+  if (moduleId === "tube") return <TubeShowcase records={records} query={query} />;
+  if (moduleId === "finance") return <FinanceShowcase records={records} />;
+  return <PriceCompareShowcase records={records} query={query} />;
+}
+
+function toolValue(row: unknown, key: string) {
+  return (row as Record<string, unknown>)[key];
+}
+
+function PriceCompareShowcase({ records, query }: { records: Array<Record<string, any>>; query: string }) {
+  const latest = records[0];
+  return (
+    <div className="tool-showcase amber">
+      <div className="recent-links">
+        <strong>最近連結</strong>
+        <span>{records.length} 筆</span>
+      </div>
+      <div className="tool-mini-grid">
+        {(records.length ? records.slice(0, 2) : [{ title: query || "PChome 商品", resultUrl: "https://24h.pchome.com.tw/" }]).map((record, index) => (
+          <a key={String(toolValue(record, "id") ?? index)} className="tool-pill-row" href={String(toolValue(record, "resultUrl") || "#")} target="_blank" rel="noreferrer">
+            <strong>{String(record.title || record.queryText || query || "商品查詢")}</strong>
+            <small>{String(record.resultUrl || record.source || "尚未建立結果 URL")}</small>
+          </a>
+        ))}
+      </div>
+      <div className="price-result-card">
+        <div>
+          <strong>{String(latest?.title || query || "比價結果")}</strong>
+          <p>{String(latest?.source || "BigGo / PChome / momo")}</p>
+        </div>
+        <span>{formatNumber(Number(latest?.currentPrice || 0)) || "--"}</span>
+      </div>
+    </div>
+  );
+}
+
+function PhonePriceShowcase({ records }: { records: Array<Record<string, any>> }) {
+  const rows = records.length ? records.slice(0, 4) : [
+    { title: "iPhone 17", currentPrice: 0, lowPrice: 0, source: "Apple" },
+    { title: "Samsung A17", currentPrice: 4990, lowPrice: 4990, source: "Samsung" },
+    { title: "Samsung A17 6G 128GB", currentPrice: 4990, lowPrice: 4990, source: "Samsung" },
+  ];
+  const max = Math.max(...rows.map((row) => Number(row.currentPrice || row.lowPrice || 1)), 1);
+  return (
+    <div className="tool-showcase phone">
+      <div className="phone-query-grid">
+        <div>
+          <strong>蘋果手機區塊</strong>
+          <p>預設查詢：iPhone 17</p>
+        </div>
+        <div>
+          <strong>三星手機區塊</strong>
+          <p>預設查詢：Samsung 26 / Samsung A17</p>
+        </div>
+      </div>
+      <div className="chart-card">
+        <strong>地標網通 vs 傑昇通信</strong>
+        {rows.map((row, index) => {
+          const price = Number(row.currentPrice || row.lowPrice || 0);
+          return (
+            <div key={String(row.id ?? index)} className="chart-row">
+              <span>{String(row.title || row.queryText || "手機")}</span>
+              <div><i style={{ width: `${Math.max(6, (price / max) * 100)}%` }} /></div>
+              <b>{price ? `NT$ ${formatNumber(price)}` : "最低價"}</b>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TubeShowcase({ records, query }: { records: Array<Record<string, any>>; query: string }) {
+  const rows = records.length ? records.slice(0, 8) : [
+    { title: "張內咸脫口秀", source: "YouTube", resultUrl: "https://www.youtube.com/results?search_query=%E9%8B%92%E5%85%84" },
+    { title: "Sun Channel 最新影片", source: "YouTube", resultUrl: "https://www.youtube.com/" },
+    { title: query || "鋒兄 Tube 追蹤", source: "Bilibili", resultUrl: "https://search.bilibili.com/" },
+  ];
+  return (
+    <div className="tool-showcase tube">
+      <div className="tube-alert">
+        <strong>3 天內新影片：{rows.length} 部</strong>
+      </div>
+      <div className="tube-list">
+        {rows.map((row, index) => (
+          <a key={String(row.id ?? index)} href={String(row.resultUrl || "#")} target="_blank" rel="noreferrer">
+            <strong>{String(row.title || row.queryText || "影片")}</strong>
+            <small>{String(row.source || "YouTube")} / {String(row.notice || "追蹤中")}</small>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FinanceShowcase({ records }: { records: Array<Record<string, any>> }) {
+  const rows = records.length ? records.slice(0, 6) : [
+    { title: "加權指數", queryText: "^TWII", currentPrice: 44169, highPrice: 46552, lowPrice: 21551, source: "Yahoo" },
+    { title: "台積電", queryText: "2330.TW", currentPrice: 2310, highPrice: 2440, lowPrice: 1015, source: "Yahoo" },
+    { title: "Shiller PE Ratio", queryText: "CAPE", currentPrice: 41, highPrice: 44, lowPrice: 0, source: "Multpl" },
+  ];
+  return (
+    <div className="tool-showcase finance">
+      <div className="finance-hero">
+        <div>
+          <strong>Shiller PE Ratio</strong>
+          <p>Max: 44.19 (Dec 1999)</p>
+        </div>
+        <span>{formatNumber(Number(rows.at(-1)?.currentPrice || 41))}</span>
+      </div>
+      <div className="finance-grid">
+        {rows.map((row, index) => (
+          <div key={String(row.id ?? index)} className="finance-card">
+            <small>{String(row.source || "Yahoo")}</small>
+            <strong>{String(row.title || row.queryText || "Quote")}</strong>
+            <b>{formatNumber(Number(row.currentPrice || 0))}</b>
+            <p>52W High {formatNumber(Number(row.highPrice || 0))} / Low {formatNumber(Number(row.lowPrice || 0))}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
