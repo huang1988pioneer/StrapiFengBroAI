@@ -81,9 +81,188 @@ const defaultStrapiUrl = import.meta.env.VITE_STRAPI_URL || "";
 const defaultStrapiApiToken = import.meta.env.VITE_STRAPI_API_TOKEN || "";
 
 const yahooFinanceSymbols = "2330.TW ^TWII USDTWD=X BTC-USD ^GSPC ^IXIC";
+const defaultToolApiBase = import.meta.env.VITE_FENGBRO_TOOL_API_BASE || "https://sq-lite-cloud-feng-bro-ai.vercel.app";
+
+type PriceToolResult = {
+  title: string;
+  url: string;
+  source: string;
+  currency: string;
+  currentPrice: number | null;
+  notice?: string;
+  matchedTitle?: string;
+  matchedUrl?: string;
+  resolvedAt: string;
+  history: Array<{ date: string; price: number | null; currency?: string }>;
+};
+
+type MobileToolProduct = {
+  id: string;
+  brand: string;
+  name: string;
+  suggestedPrice?: number | null;
+  landtopPrice?: number | null;
+  landtopPriceLabel?: string | null;
+  sourceUrl?: string | null;
+  jyesPrice?: number | null;
+  jyesPriceLabel?: string | null;
+  jyesUrl?: string | null;
+  bestPrice?: number | null;
+  bestSourceLabel?: string | null;
+};
+
+type MobileToolResult = {
+  source: string;
+  query: string;
+  total: number;
+  fetchedAt: string;
+  products: MobileToolProduct[];
+  warnings?: string[];
+};
+
+type TubeToolVideo = {
+  videoId: string;
+  title: string;
+  url: string;
+  publishedAt: string;
+  updatedAt: string;
+  thumbnail: string;
+  channelTitle?: string;
+};
+
+type TubeToolChannel = {
+  sourceUrl: string;
+  channelId: string;
+  title: string;
+  videos: TubeToolVideo[];
+  error?: string;
+};
+
+type TubeToolResult = {
+  fetchedAt: string;
+  sourceCount: number;
+  defaultSourceCount: number;
+  channels: TubeToolChannel[];
+  recentVideos: TubeToolVideo[];
+};
+
+type FinanceToolQuote = {
+  id: string;
+  name: string;
+  displayName: string;
+  symbol: string;
+  sourceUrl: string;
+  group: string;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  currency: string;
+  high52: number | null;
+  low52: number | null;
+  lastUpdated: string;
+  recordTag: "new-high" | "new-low" | null;
+  isThresholdAlert?: boolean;
+  alertMessage?: string;
+  error?: string;
+};
+
+type FinanceToolResult = {
+  fetchedAt: string;
+  source: string;
+  quotes: FinanceToolQuote[];
+  financeAlerts: Array<{ id: string; message: string; sourceUrl: string }>;
+  shillerPe: {
+    current: number | null;
+    recordHigh: number;
+    recordHighDate: string;
+    isRecordHigh: boolean;
+  };
+};
 
 function searchUrl(base: string, query: string) {
   return `${base}${encodeURIComponent(query.trim())}`;
+}
+
+function buildToolApiUrl(path: string, params?: Record<string, string | number | boolean | undefined>) {
+  const url = new URL(path, defaultToolApiBase);
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
+  });
+  return url.toString();
+}
+
+async function fetchToolJson<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  const directUrl = buildToolApiUrl(path, params);
+  const encodedUrl = encodeURIComponent(directUrl);
+  const urls = [
+    directUrl,
+    `https://api.allorigins.win/raw?url=${encodedUrl}`,
+    `https://api.allorigins.win/get?url=${encodedUrl}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodedUrl}`,
+    `https://corsproxy.io/?${encodedUrl}`,
+    `https://cors.isomorphic-git.org/${directUrl}`,
+  ];
+  let lastError = "";
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      const text = await response.text();
+      const parsed = text ? JSON.parse(text) : {};
+      const payload = typeof parsed?.contents === "string" ? JSON.parse(parsed.contents) : parsed;
+      if (!response.ok) {
+        lastError = typeof payload?.error === "string" ? payload.error : `${response.status} ${response.statusText}`;
+        continue;
+      }
+      if (typeof payload?.error === "string") throw new Error(payload.error);
+      return payload as T;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  throw new Error(lastError || "Live tool API is temporarily unavailable");
+}
+
+function formatToolDate(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatToolMoney(value: number | null | undefined, currency = "TWD") {
+  if (value === null || value === undefined || Number.isNaN(value)) return "--";
+  return `${currency === "TWD" ? "NT$ " : `${currency} `}${formatNumber(value)}`;
+}
+
+function summarizePriceHistory(history: PriceToolResult["history"] = []) {
+  const prices = history.map((point) => point.price).filter((price): price is number => typeof price === "number" && Number.isFinite(price));
+  if (!prices.length) return { high: null, low: null, change: null };
+  const first = prices[0];
+  const last = prices[prices.length - 1];
+  return {
+    high: Math.max(...prices),
+    low: Math.min(...prices),
+    change: first ? last - first : null,
+  };
+}
+
+function groupFinanceQuotes(quotes: FinanceToolQuote[]) {
+  const labels: Record<string, string> = {
+    taiwan: "台股",
+    us: "美股指數",
+    valuation: "估值",
+    asia: "亞洲",
+    korea: "韓股",
+    forex: "匯率",
+    commodity: "商品",
+  };
+  return Object.entries(labels).map(([key, label]) => ({
+    key,
+    label,
+    rows: quotes.filter((quote) => quote.group === key),
+  }));
 }
 
 function getToolPreset(moduleId: string): ToolPreset | null {
@@ -93,7 +272,7 @@ function getToolPreset(moduleId: string): ToolPreset | null {
       description: "參考 Appwrite 的 BigGo/商品價格追蹤流程，建立商品價格快照。",
       badge: "Price",
       placeholder: "貼上商品網址或輸入商品名稱",
-      defaultQuery: "KIOXIA Exceria Plus G3 1TB",
+      defaultQuery: "https://24h.pchome.com.tw/prod/DRAHGT-A900GOJVX",
       defaultSource: "BigGo / PChome / momo",
       notice: "查詢後可填入目前價格、最高價格、最低價格並建立 Strapi 快照。",
       links: [
@@ -776,7 +955,7 @@ export default function Index() {
         </section>
 
         {isToolModule(activeModule.id) ? (
-          <ToolWorkspaceReplica moduleId={activeModule.id} draft={draft} records={records} setActiveId={setActiveId} setDraft={setDraft} setToast={setToast} />
+          <LiveToolWorkspaceReplica moduleId={activeModule.id} draft={draft} records={records} setActiveId={setActiveId} setDraft={setDraft} setToast={setToast} />
         ) : null}
 
         <section className="content-grid">
@@ -987,7 +1166,14 @@ function NavItem({
       <button
         className={`nav-item ${active ? "active" : ""}`}
         type="button"
-        onClick={() => (item.children ? setOpen((value) => !value) : onSelect(item.id))}
+        onClick={() => {
+          if (item.children?.length) {
+            setOpen(true);
+            onSelect(item.children[0].id);
+            return;
+          }
+          onSelect(item.id);
+        }}
       >
         <span className="nav-icon">{item.icon}</span>
         <span>
@@ -1644,6 +1830,500 @@ function ReplicaFinanceGroup({ title, rows }: { title: string; rows: Array<Recor
             <b>{formatNumber(Number(row?.currentPrice || 0))}<em>{String(row?.queryText || "")}</em></b>
             <p>52W High {formatNumber(Number(row?.highPrice || 0)) || "--"} / 52W Low {formatNumber(Number(row?.lowPrice || 0)) || "--"}</p>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LiveToolWorkspaceReplica({
+  moduleId,
+  draft,
+  records,
+  setActiveId,
+  setDraft,
+  setToast,
+}: {
+  moduleId: string;
+  draft: Record<string, string | number | boolean>;
+  records: ItemRecord[];
+  setActiveId: Dispatch<SetStateAction<string>>;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  setToast: Dispatch<SetStateAction<string>>;
+}) {
+  const preset = getToolPreset(moduleId);
+  if (!preset) return null;
+  const activePreset = preset;
+  const moduleIcon = moduleMap.get(moduleId)?.icon ?? <Wrench />;
+  const query = String(draft.queryText ?? activePreset.defaultQuery);
+
+  function applyQuery(nextQuery = query) {
+    setDraft((prev) => ({
+      ...prev,
+      toolType: moduleId,
+      queryText: nextQuery,
+      title: nextQuery || activePreset.title,
+      source: activePreset.defaultSource,
+      resultUrl: activePreset.links[0]?.url(nextQuery) || "",
+      notice: String(prev.notice || activePreset.notice),
+    }));
+  }
+
+  function openToolLink(link: ToolLink) {
+    const nextQuery = query.trim() || activePreset.defaultQuery;
+    applyQuery(nextQuery);
+    window.open(link.url(nextQuery), "_blank", "noopener,noreferrer");
+    setToast(`已開啟 ${link.label}：${nextQuery}`);
+  }
+
+  return (
+    <section className={`tool-workspace replica tool-${moduleId}`}>
+      <div className="tool-tabs" aria-label="鋒兄工具">
+        {(["price", "phone-price", "tube", "finance"] as const).map((id) => {
+          const tabPreset = getToolPreset(id);
+          return (
+            <button key={id} type="button" className={moduleId === id ? "active" : ""} onClick={() => setActiveId(id)}>
+              {tabPreset?.title ?? id}
+            </button>
+          );
+        })}
+      </div>
+      <div className="tool-workspace-head">
+        <span className="tool-mode-icon">{moduleIcon}</span>
+        <div>
+          <small>{activePreset.badge}</small>
+          <strong>{activePreset.title}</strong>
+          <p>{activePreset.description}</p>
+        </div>
+        <span className="tool-update-pill">Live API</span>
+      </div>
+      {moduleId === "phone-price" ? (
+        <LiveReplicaPhone records={records} query={query} setDraft={setDraft} applyQuery={applyQuery} />
+      ) : moduleId === "tube" ? (
+        <LiveReplicaTube records={records} query={query} preset={activePreset} openToolLink={openToolLink} />
+      ) : moduleId === "finance" ? (
+        <LiveReplicaFinance records={records} preset={activePreset} openToolLink={openToolLink} />
+      ) : (
+        <LiveReplicaPrice records={records} query={query} preset={activePreset} setDraft={setDraft} applyQuery={applyQuery} openToolLink={openToolLink} />
+      )}
+    </section>
+  );
+}
+
+function LiveReplicaPrice({
+  records,
+  query,
+  preset,
+  setDraft,
+  applyQuery,
+  openToolLink,
+}: {
+  records: Array<Record<string, any>>;
+  query: string;
+  preset: ToolPreset;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  applyQuery: (nextQuery?: string) => void;
+  openToolLink: (link: ToolLink) => void;
+}) {
+  const [result, setResult] = useState<PriceToolResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const history = summarizePriceHistory(result?.history ?? []);
+  const recent = records.slice(0, 4);
+
+  async function loadPrice(nextQuery = query || "https://24h.pchome.com.tw/prod/DRAHGT-A900GOJVX") {
+    const productUrl = nextQuery.trim();
+    if (!productUrl) return;
+    applyQuery(productUrl);
+    setLoading(true);
+    setError("");
+    try {
+      const payload = await fetchToolJson<PriceToolResult>("/api/resolve", { url: productUrl, source: "biggo-api", days: 3650 });
+      setResult(payload);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : String(loadError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPrice();
+  }, []);
+
+  return (
+    <div className="tool-showcase amber replica-showcase">
+      <div className="price-search-shell">
+        <label>商品網址</label>
+        <div className="replica-query-row">
+          <input
+            value={query}
+            onChange={(event) => setDraft((prev) => ({ ...prev, toolType: "price", queryText: event.target.value }))}
+            onBlur={() => applyQuery(query)}
+            placeholder={preset.placeholder}
+          />
+          <button type="button" onClick={() => loadPrice()}>
+            <Search size={16} />
+            {loading ? "查詢中" : "查詢歷史價格"}
+          </button>
+        </div>
+        <div className="tool-source-grid">
+          {preset.links.slice(0, 2).map((link) => (
+            <button key={link.label} type="button" className="tool-source-card" onClick={() => openToolLink(link)}>
+              <strong>{link.label}</strong>
+              <small>{link.hint}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      {error ? <p className="tool-error">即時比價讀取失敗：{error}</p> : null}
+      <div className="replica-section">
+        <div className="section-caption">
+          <strong>最近連結</strong>
+          <span>{recent.length} 筆</span>
+        </div>
+        {recent.length ? (
+          <div className="tool-mini-grid">
+            {recent.map((record, index) => (
+              <a key={String(toolValue(record, "id") ?? index)} className="tool-pill-row" href={String(toolValue(record, "resultUrl") || toolValue(record, "queryText") || "#")} target="_blank" rel="noreferrer">
+                <strong>{String(record.title || record.queryText || "商品連結")}</strong>
+                <small>{String(record.resultUrl || record.source || record.queryText || "商品 URL")}</small>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-dash">尚未有儲存的比價連結，請輸入商品 URL 查詢即時價格。</p>
+        )}
+      </div>
+      <div className="replica-section">
+        <div className="section-caption">
+          <strong>比價結果</strong>
+          {result?.matchedUrl || result?.url ? <a href={result.matchedUrl || result.url} target="_blank" rel="noreferrer">開啟商品 <ExternalLink size={12} /></a> : null}
+        </div>
+        {result ? (
+          <>
+            <div className="price-result-card">
+              <div>
+                <strong>{result.matchedTitle || result.title || "即時商品"}</strong>
+                <p>來源：{result.source}，更新：{formatToolDate(result.resolvedAt)}{result.notice ? `，${result.notice}` : ""}</p>
+              </div>
+              <span>{formatToolMoney(result.currentPrice, result.currency)}</span>
+            </div>
+            <div className="price-stat-grid">
+              <Metric label="目前價格" value={formatToolMoney(result.currentPrice, result.currency)} />
+              <Metric label="歷史高點" value={formatToolMoney(history.high, result.currency)} />
+              <Metric label="歷史低點" value={formatToolMoney(history.low, result.currency)} />
+            </div>
+            <div className="price-trend-card">
+              <div className="section-caption">
+                <strong>Price Trend / 歷史價格走勢</strong>
+                <span>{history.change === null ? "尚無變化資料" : `${history.change >= 0 ? "+" : ""}${formatToolMoney(history.change, result.currency)}`}</span>
+              </div>
+              <div className="trend-canvas">
+                {(result.history.length ? result.history : [{ price: result.currentPrice, date: result.resolvedAt }]).map((point, index, points) => {
+                  const values = points.map((entry) => entry.price ?? result.currentPrice ?? 0);
+                  const min = Math.min(...values);
+                  const max = Math.max(...values);
+                  const range = max - min || 1;
+                  const left = points.length <= 1 ? 50 : (index / (points.length - 1)) * 88 + 6;
+                  const top = 86 - (((point.price ?? result.currentPrice ?? min) - min) / range) * 64;
+                  return <i key={`${point.date}-${index}`} style={{ left: `${left}%`, top: `${top}%` }} title={`${point.date}: ${point.price ?? "--"}`} />;
+                })}
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="empty-dash">{loading ? "正在讀取即時價格..." : "輸入商品 URL 後會顯示即時結果。"}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LiveReplicaPhone({
+  records,
+  query,
+  setDraft,
+  applyQuery,
+}: {
+  records: Array<Record<string, any>>;
+  query: string;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  applyQuery: (nextQuery?: string) => void;
+}) {
+  const [primaryQuery, setPrimaryQuery] = useState(query || "iPhone 17");
+  const [secondaryQuery, setSecondaryQuery] = useState("Samsung 26");
+  const [result, setResult] = useState<MobileToolResult | null>(null);
+  const [secondaryResult, setSecondaryResult] = useState<MobileToolResult | null>(null);
+  const [loading, setLoading] = useState("");
+  const [error, setError] = useState("");
+  const products = [...(result?.products ?? []), ...(secondaryResult?.products ?? [])];
+  const chartRows = products.slice(0, 6);
+  const max = Math.max(...chartRows.map((row) => Number(row.bestPrice || row.landtopPrice || row.jyesPrice || 1)), 1);
+
+  async function loadMobile(nextQuery: string, target: "primary" | "secondary", refresh = true) {
+    const keyword = nextQuery.trim();
+    if (!keyword) return;
+    setLoading(target);
+    setError("");
+    if (target === "primary") {
+      setDraft((prev) => ({ ...prev, toolType: "phone-price", queryText: keyword }));
+      applyQuery(keyword);
+    }
+    try {
+      const payload = await fetchToolJson<MobileToolResult>("/api/landtop", { query: keyword, refresh: refresh ? 1 : 0 });
+      if (target === "primary") setResult(payload);
+      else setSecondaryResult(payload);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : String(loadError));
+    } finally {
+      setLoading("");
+    }
+  }
+
+  useEffect(() => {
+    loadMobile(primaryQuery, "primary", false);
+    loadMobile(secondaryQuery, "secondary", false);
+  }, []);
+
+  return (
+    <div className="tool-showcase phone replica-showcase">
+      <div className="phone-query-grid">
+        <LiveReplicaPhoneQuery title="蘋果手機區塊" note={`預設查詢：${primaryQuery}`} value={primaryQuery} button={loading === "primary" ? "搜尋中" : "搜尋蘋果"} onChange={setPrimaryQuery} onSearch={() => loadMobile(primaryQuery, "primary")} />
+        <LiveReplicaPhoneQuery title="三星手機區塊" note={`預設查詢：${secondaryQuery}`} value={secondaryQuery} button={loading === "secondary" ? "搜尋中" : "搜尋三星"} onChange={setSecondaryQuery} onSearch={() => loadMobile(secondaryQuery, "secondary")} />
+      </div>
+      {error ? <p className="tool-error">即時手機比價讀取失敗：{error}</p> : null}
+      <div className="chart-card">
+        <small>LANDTOP CHART</small>
+        <strong>地標網通 vs 傑昇通信</strong>
+        {chartRows.length ? chartRows.map((row) => {
+          const price = Number(row.bestPrice || row.landtopPrice || row.jyesPrice || 0);
+          const jyesPrice = Number(row.jyesPrice || price || 0);
+          return (
+            <div key={row.id} className="chart-row">
+              <span>{row.name}</span>
+              <div><i style={{ width: `${Math.max(6, (price / max) * 100)}%` }} /><em style={{ width: `${Math.max(6, (jyesPrice / max) * 100)}%` }} /></div>
+              <b>{formatToolMoney(price)}</b>
+            </div>
+          );
+        }) : <p className="empty-dash">尚未載入即時手機比價結果。</p>}
+      </div>
+      <LiveReplicaPhoneProducts title="蘋果手機區塊" rows={result?.products ?? []} emptyText="目前沒有這個區塊的即時比價結果。" />
+      <LiveReplicaPhoneProducts title="三星手機區塊" rows={secondaryResult?.products ?? []} emptyText="目前沒有這個區塊的即時比價結果。" />
+      <div className="phone-history-card">
+        <div className="section-caption">
+          <strong>Weekly History / 地標網通歷史價格</strong>
+          <span>{products.length ? `${products.length} 筆即時資料` : `${records.length} 筆工具紀錄`}</span>
+        </div>
+        <div className="line-chart">
+          {chartRows.map((row, index) => {
+            const price = Number(row.bestPrice || row.landtopPrice || row.jyesPrice || 0);
+            return <i key={row.id} style={{ left: `${18 + index * 10}%`, width: `${Math.max(8, (price / max) * 34)}%` }} />;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LiveReplicaPhoneQuery({ title, note, value, button, onChange, onSearch }: { title: string; note: string; value: string; button: string; onChange: (value: string) => void; onSearch: () => void }) {
+  return (
+    <div className="phone-query-card">
+      <div>
+        <strong>{title}</strong>
+        <p>{note}</p>
+      </div>
+      <div className="inline-query">
+        <input value={value} onChange={(event) => onChange(event.target.value)} />
+        <button type="button" onClick={onSearch}><Search size={16} />{button}</button>
+      </div>
+    </div>
+  );
+}
+
+function LiveReplicaPhoneProducts({ title, rows, emptyText }: { title: string; rows: MobileToolProduct[]; emptyText: string }) {
+  return (
+    <div className="phone-product-section">
+      <div className="section-caption">
+        <strong>{title}</strong>
+        <span>{rows.length} 筆</span>
+      </div>
+      {rows.length ? (
+        <div className="phone-product-grid">
+          {rows.map((row) => (
+            <a className="phone-product-card" key={row.id} href={row.sourceUrl || row.jyesUrl || "#"} target="_blank" rel="noreferrer">
+              <strong>{row.name}</strong>
+              <small>{row.brand || "PHONE"}</small>
+              <div className="phone-price-pills">
+                <span>地標網通 <b>{formatToolMoney(row.landtopPrice)}</b></span>
+                <span>傑昇通信 <b>{formatToolMoney(row.jyesPrice)}</b></span>
+              </div>
+              <p>{row.bestSourceLabel ? `最低：${row.bestSourceLabel}` : "即時價格資料"}</p>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="empty-dash">{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
+function LiveReplicaTube({ records, query, preset, openToolLink }: { records: Array<Record<string, any>>; query: string; preset: ToolPreset; openToolLink: (link: ToolLink) => void }) {
+  const [result, setResult] = useState<TubeToolResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadTube() {
+    setLoading(true);
+    setError("");
+    try {
+      const payload = await fetchToolJson<TubeToolResult>("/api/fengbro-tube");
+      setResult(payload);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : String(loadError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadTube();
+  }, []);
+
+  const recentVideos = result?.recentVideos ?? [];
+  const channels = result?.channels ?? [];
+
+  return (
+    <div className="tool-showcase tube replica-showcase">
+      <div className="tube-alert">
+        <strong>3 天內新影片：{recentVideos.length} 部</strong>
+        <span>更新：{formatToolDate(result?.fetchedAt)}</span>
+        <button type="button" onClick={loadTube}><RefreshCcw size={14} />{loading ? "整理中" : "重新整理"}</button>
+      </div>
+      {error ? <p className="tool-error">即時 Tube 讀取失敗：{error}</p> : null}
+      <div className="tube-list">
+        {recentVideos.length ? recentVideos.slice(0, 8).map((video) => (
+          <a key={video.videoId} href={video.url} target="_blank" rel="noreferrer">
+            <strong>{video.title}</strong>
+            <small>{video.channelTitle || "YouTube"} / {formatToolDate(video.publishedAt)}</small>
+          </a>
+        )) : <p className="empty-dash">{loading ? "正在載入 YouTube 即時資料..." : `尚未取得即時影片。${query ? `目前查詢：${query}` : ""}`}</p>}
+      </div>
+      {channels.length ? channels.map((channel) => (
+        <LiveReplicaTubeChannel key={channel.channelId || channel.sourceUrl} channel={channel} />
+      )) : (
+        <div className="tube-channel">
+          <div className="section-caption">
+            <strong>即時頻道</strong>
+            <span>{records.length} 筆工具紀錄</span>
+          </div>
+          <p className="empty-dash">尚未載入即時頻道資料，請按重新整理。</p>
+        </div>
+      )}
+      <div className="tool-action-row">
+        <button type="button" onClick={() => openToolLink(preset.links[0])}><ExternalLink size={14} />開啟 YouTube</button>
+      </div>
+    </div>
+  );
+}
+
+function LiveReplicaTubeChannel({ channel }: { channel: TubeToolChannel }) {
+  return (
+    <div className="tube-channel">
+      <div className="section-caption">
+        <strong>{channel.title || "YouTube 頻道"}</strong>
+        <span>{channel.videos.length} 部影片</span>
+      </div>
+      {channel.error ? <p className="tool-error">{channel.error}</p> : null}
+      <div className="tube-card-grid">
+        {channel.videos.map((video) => (
+          <a className="tube-video-card" key={video.videoId} href={video.url} target="_blank" rel="noreferrer">
+            <div className="tube-thumb with-image">
+              {video.thumbnail ? <img src={video.thumbnail} alt="" loading="lazy" /> : <Film size={22} />}
+            </div>
+            <strong>{video.title}</strong>
+            <small>{channel.title} / {formatToolDate(video.publishedAt)}</small>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LiveReplicaFinance({ records, preset, openToolLink }: { records: Array<Record<string, any>>; preset: ToolPreset; openToolLink: (link: ToolLink) => void }) {
+  const [result, setResult] = useState<FinanceToolResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadFinance() {
+    setLoading(true);
+    setError("");
+    try {
+      const payload = await fetchToolJson<FinanceToolResult>("/api/fengbro-finance");
+      setResult(payload);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : String(loadError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadFinance();
+  }, []);
+
+  const quoteGroups = groupFinanceQuotes(result?.quotes ?? []);
+
+  return (
+    <div className="tool-showcase finance replica-showcase">
+      <div className="finance-hero">
+        <div>
+          <strong>Shiller PE Ratio</strong>
+          <p>Max: {formatNumber(result?.shillerPe.recordHigh ?? 0)} ({result?.shillerPe.recordHighDate || "-"})</p>
+        </div>
+        <button type="button" onClick={loadFinance}><RefreshCcw size={14} />{loading ? "整理中" : "重新整理"}</button>
+        <span>{result?.shillerPe.current === null || result?.shillerPe.current === undefined ? "--" : formatNumber(result.shillerPe.current)}</span>
+      </div>
+      {error ? <p className="tool-error">即時金融讀取失敗：{error}</p> : null}
+      {result?.financeAlerts?.length ? (
+        <div className="tool-warning-list">
+          {result.financeAlerts.map((alert) => (
+            <a key={alert.id} href={alert.sourceUrl} target="_blank" rel="noreferrer">{alert.message}</a>
+          ))}
+        </div>
+      ) : null}
+      {quoteGroups.some((group) => group.rows.length) ? quoteGroups.map((group) => (
+        <LiveReplicaFinanceGroup key={group.key} title={group.label} rows={group.rows} />
+      )) : (
+        <p className="empty-dash">{loading ? "正在載入即時金融資料..." : `尚未取得即時金融資料。已有 ${records.length} 筆工具紀錄。`}</p>
+      )}
+      <div className="tool-action-row">
+        <button type="button" onClick={() => openToolLink(preset.links[0])}><ExternalLink size={14} />開啟 Yahoo Finance</button>
+      </div>
+    </div>
+  );
+}
+
+function LiveReplicaFinanceGroup({ title, rows }: { title: string; rows: FinanceToolQuote[] }) {
+  return (
+    <div className="finance-section">
+      <div className="section-caption">
+        <strong>{title}</strong>
+        <span>{rows.length} 項</span>
+      </div>
+      <div className="finance-grid">
+        {rows.map((row) => (
+          <a key={row.id} className="finance-card" href={row.sourceUrl || "#"} target="_blank" rel="noreferrer">
+            <small>{row.sourceUrl.includes("cnbc") ? "CNBC" : row.sourceUrl.includes("yahoo") ? "Yahoo" : "Source"}</small>
+            <strong>{row.displayName || row.name}</strong>
+            <b>{formatToolMoney(row.price, row.currency)}<em>{row.symbol}</em></b>
+            <p>
+              {row.change === null ? "變化 --" : `${row.change >= 0 ? "+" : ""}${formatNumber(row.change)}`}
+              {row.changePercent === null ? "" : ` / ${row.changePercent >= 0 ? "+" : ""}${formatNumber(row.changePercent)}%`}
+            </p>
+            <p>52W High {formatToolMoney(row.high52, row.currency)} / 52W Low {formatToolMoney(row.low52, row.currency)}</p>
+          </a>
         ))}
       </div>
     </div>
