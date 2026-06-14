@@ -545,6 +545,527 @@ a {
   font-weight: 800;
 }
 
+.tool-workspace.replica {
+  max-width: 1120px;
+  margin-right: auto;
+  margin-left: auto;
+  border-color: #e7ded0;
+  border-radius: 20px;
+  background: #fffdf8;
+  box-shadow: 0 22px 70px rgba(91, 72, 41, 0.08);
+}
+
+.stats-strip:has(+ .tool-workspace.replica) {
+  display: none;
+}
+
+.tool-workspace.replica .tool-tabs {
+  padding: 8px 10px;
+  border-color: #eadfce;
+  background: #fffaf1;
+}
+
+.tool-workspace.replica .tool-tabs button {
+  padding: 7px 13px;
+  border-color: #dcccb8;
+  background: #fffdf8;
+  color: #4f3b20;
+  font-size: 12px;
+}
+
+.tool-workspace.replica .tool-tabs button.active {
+  border-color: #8b5a0a;
+  background: #8b5a0a;
+  color: #fffaf1;
+}
+
+.tool-workspace.replica .tool-workspace-head {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  border: 1px solid #eadfce;
+  border-radius: 18px;
+  background: #fffefb;
+  padding: 18px;
+}
+
+.tool-workspace.replica .tool-workspace-head::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.85), rgba(249, 235, 209, 0.28));
+  pointer-events: none;
+}
+
+.tool-workspace.replica .tool-workspace-head > * {
+  position: relative;
+}
+
+.tool-mode-icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #fff1b9;
+  color: #9a5600;
+}
+
+.tool-phone-price .tool-mode-icon,
+.tool-phone-price .tool-workspace-head small {
+  color: #0284c7;
+}
+
+.tool-phone-price .tool-mode-icon {
+  background: #dff4ff;
+}
+
+.tool-tube .tool-mode-icon,
+.tool-tube .tool-workspace-head small {
+  color: #e11d48;
+}
+
+.tool-tube .tool-mode-icon {
+  background: #ffe4e8;
+}
+
+.tool-finance .tool-mode-icon,
+.tool-finance .tool-workspace-head small {
+  color: #059669;
+}
+
+.tool-finance .tool-mode-icon {
+  background: #d9fbe8;
+}
+
+.tool-update-pill,
+.tool-workspace.replica .tool-workspace-head > span.tool-update-pill {
+  border: 1px solid #e7ded0;
+  border-radius: 999px;
+  background: #fffefb;
+  color: #7b6b56;
+  white-space: nowrap;
+}
+
+.replica-showcase {
+  padding: 16px;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.price-search-shell,
+.replica-section,
+.phone-product-section,
+.phone-history-card,
+.tube-channel,
+.finance-section {
+  border: 1px solid #e8dece;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 14px;
+}
+
+.price-search-shell {
+  display: grid;
+  gap: 10px;
+  border-style: dashed;
+  border-color: #f2bc32;
+  background: #fff9e8;
+}
+
+.price-search-shell label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #4d3714;
+}
+
+.replica-query-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.replica-query-row input,
+.inline-query input {
+  min-width: 0;
+  height: 40px;
+  border: 1px solid #e3d5c1;
+  border-radius: 999px;
+  background: white;
+  padding: 0 14px;
+  outline: 0;
+}
+
+.replica-query-row input:focus,
+.inline-query input:focus {
+  border-color: #d19000;
+  box-shadow: 0 0 0 3px rgba(242, 188, 50, 0.18);
+}
+
+.replica-query-row button,
+.inline-query button,
+.tube-alert button,
+.finance-hero button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #7b4b06;
+  color: white;
+  padding: 0 16px;
+  font-weight: 900;
+}
+
+.tool-source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tool-source-card {
+  border: 1px solid #efb72d;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #3a2b17;
+  padding: 12px;
+  text-align: left;
+}
+
+.tool-source-card strong,
+.tool-source-card small {
+  display: block;
+}
+
+.tool-source-card small {
+  margin-top: 4px;
+  color: #76664f;
+  font-size: 12px;
+}
+
+.section-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #28352d;
+}
+
+.section-caption span,
+.section-caption a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  color: #b35f00;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.price-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.price-stat-grid .metric:nth-child(1) {
+  border-color: #f0c24b;
+  background: #fff7db;
+}
+
+.price-stat-grid .metric:nth-child(2) {
+  border-color: #f9b4c2;
+  background: #fff1f4;
+}
+
+.price-stat-grid .metric:nth-child(3) {
+  border-color: #8ee7c0;
+  background: #ecfff5;
+}
+
+.price-trend-card {
+  margin-top: 10px;
+  border: 1px solid #f0c24b;
+  border-radius: 18px;
+  background: #fffaf0;
+  padding: 14px;
+}
+
+.trend-canvas,
+.line-chart {
+  position: relative;
+  min-height: 170px;
+  overflow: hidden;
+  border: 1px solid #f0c24b;
+  border-radius: 16px;
+  background: linear-gradient(#fffefd, #fffaf1);
+}
+
+.trend-canvas i {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border: 3px solid #f59e0b;
+  border-radius: 50%;
+  background: white;
+}
+
+.phone-query-grid {
+  align-items: stretch;
+}
+
+.phone-query-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #7dd3fc;
+  border-radius: 16px;
+  background: #f1fbff;
+  padding: 14px;
+}
+
+.phone-query-card p {
+  margin: 4px 0 0;
+  color: #61717b;
+  font-size: 12px;
+}
+
+.inline-query {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.inline-query button {
+  background: #8b5a0a;
+}
+
+.chart-card small {
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.chart-row div {
+  display: grid;
+  gap: 8px;
+  background: transparent;
+}
+
+.chart-row i,
+.chart-row em {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.chart-row i {
+  background: #0ea5e9;
+}
+
+.chart-row em {
+  background: #8b5cf6;
+}
+
+.phone-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.phone-product-card {
+  border: 1px solid #d8cbb9;
+  border-radius: 14px;
+  background: white;
+  padding: 14px;
+}
+
+.phone-product-card small {
+  display: block;
+  margin-top: 3px;
+  color: #6c6c6c;
+  letter-spacing: 0.2em;
+}
+
+.phone-price-pills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.phone-price-pills span {
+  border-radius: 999px;
+  background: #edf7ff;
+  padding: 9px 10px;
+  color: #0f6e9b;
+  font-size: 12px;
+}
+
+.phone-price-pills span:nth-child(2) {
+  background: #f1eaff;
+  color: #6d28d9;
+}
+
+.empty-dash {
+  max-width: 560px;
+  margin: 8px 0 0;
+  border: 1px dashed #d7dee5;
+  border-radius: 16px;
+  padding: 22px;
+  color: #65717d;
+  text-align: center;
+}
+
+.line-chart {
+  border-color: #bae6fd;
+  background: #f8fcff;
+}
+
+.line-chart i {
+  position: absolute;
+  top: 50%;
+  left: 28%;
+  width: 34%;
+  border-top: 3px solid #f97316;
+}
+
+.line-chart i::before,
+.line-chart i::after {
+  position: absolute;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #f97316;
+  border-radius: 50%;
+  background: white;
+  content: "";
+}
+
+.line-chart i::before {
+  left: 0;
+}
+
+.line-chart i::after {
+  right: 0;
+}
+
+.tube-alert {
+  border: 1px solid #facc15;
+  border-radius: 18px;
+  background: #fff9db;
+  padding: 14px;
+}
+
+.tube-alert button {
+  background: #dc2626;
+}
+
+.tube-card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tube-video-card {
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid #d8cbb9;
+  border-radius: 12px;
+  background: white;
+  color: #1f2924;
+  text-decoration: none;
+}
+
+.tube-video-card strong,
+.tube-video-card small {
+  padding: 0 10px;
+}
+
+.tube-video-card strong {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tube-video-card small {
+  padding-bottom: 10px;
+  color: #6b6258;
+  font-size: 11px;
+}
+
+.tube-thumb {
+  display: grid;
+  min-height: 96px;
+  place-items: center;
+  background:
+    linear-gradient(135deg, rgba(127, 29, 29, 0.78), rgba(20, 20, 20, 0.84)),
+    linear-gradient(90deg, #fb7185, #f59e0b);
+  color: white;
+}
+
+.tube-thumb span {
+  max-width: 90%;
+  overflow: hidden;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finance-hero {
+  border-color: #a7f3d0;
+  background: #ecfff5;
+}
+
+.finance-hero button {
+  background: #059669;
+}
+
+.finance-hero span {
+  color: #0f3d2e;
+}
+
+.finance-section {
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+}
+
+.finance-section .section-caption {
+  margin: 6px 0 10px;
+  color: #047857;
+}
+
+.finance-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.finance-card b {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  color: #1b2b24;
+  font-size: 22px;
+}
+
+.finance-card b em {
+  color: #6b7a72;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
@@ -944,6 +1465,15 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .tool-workspace.replica {
+    max-width: none;
+  }
+
+  .tube-card-grid,
+  .finance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .editor-panel {
     position: static;
   }
@@ -986,6 +1516,34 @@ td {
 
   .stats-strip,
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-workspace.replica {
+    padding: 12px;
+  }
+
+  .tool-workspace.replica .tool-workspace-head,
+  .replica-query-row,
+  .inline-query,
+  .price-result-card,
+  .finance-hero {
+    display: grid;
+  }
+
+  .tool-source-grid,
+  .tool-mini-grid,
+  .phone-query-grid,
+  .price-stat-grid,
+  .phone-product-grid,
+  .phone-price-pills,
+  .tube-list,
+  .tube-card-grid,
+  .finance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-row {
     grid-template-columns: 1fr;
   }
 

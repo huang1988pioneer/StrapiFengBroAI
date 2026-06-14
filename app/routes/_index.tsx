@@ -776,7 +776,7 @@ export default function Index() {
         </section>
 
         {isToolModule(activeModule.id) ? (
-          <ToolWorkspace moduleId={activeModule.id} draft={draft} records={records} setActiveId={setActiveId} setDraft={setDraft} setToast={setToast} />
+          <ToolWorkspaceReplica moduleId={activeModule.id} draft={draft} records={records} setActiveId={setActiveId} setDraft={setDraft} setToast={setToast} />
         ) : null}
 
         <section className="content-grid">
@@ -1233,6 +1233,416 @@ function FinanceShowcase({ records }: { records: Array<Record<string, any>> }) {
             <strong>{String(row.title || row.queryText || "Quote")}</strong>
             <b>{formatNumber(Number(row.currentPrice || 0))}</b>
             <p>52W High {formatNumber(Number(row.highPrice || 0))} / Low {formatNumber(Number(row.lowPrice || 0))}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ToolWorkspaceReplica({
+  moduleId,
+  draft,
+  records,
+  setActiveId,
+  setDraft,
+  setToast,
+}: {
+  moduleId: string;
+  draft: Record<string, string | number | boolean>;
+  records: ItemRecord[];
+  setActiveId: Dispatch<SetStateAction<string>>;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  setToast: Dispatch<SetStateAction<string>>;
+}) {
+  const preset = getToolPreset(moduleId);
+  if (!preset) return null;
+  const toolPreset = preset;
+  const moduleIcon = moduleMap.get(moduleId)?.icon ?? <Wrench />;
+  const query = String(draft.queryText ?? toolPreset.defaultQuery);
+
+  function applyQuery(nextQuery = query) {
+    setDraft((prev) => ({
+      ...prev,
+      toolType: moduleId,
+      queryText: nextQuery,
+      title: nextQuery || toolPreset.title,
+      source: toolPreset.defaultSource,
+      resultUrl: toolPreset.links[0]?.url(nextQuery) || "",
+      notice: String(prev.notice || toolPreset.notice),
+    }));
+  }
+
+  function openToolLink(link: ToolLink) {
+    const nextQuery = query.trim() || toolPreset.defaultQuery;
+    applyQuery(nextQuery);
+    window.open(link.url(nextQuery), "_blank", "noopener,noreferrer");
+    setToast(`已開啟 ${link.label}：${nextQuery}`);
+  }
+
+  return (
+    <section className={`tool-workspace replica tool-${moduleId}`}>
+      <div className="tool-tabs" aria-label="鋒兄工具">
+        {(["price", "phone-price", "tube", "finance"] as const).map((id) => {
+          const tabPreset = getToolPreset(id);
+          return (
+            <button key={id} type="button" className={moduleId === id ? "active" : ""} onClick={() => setActiveId(id)}>
+              {tabPreset?.title ?? id}
+            </button>
+          );
+        })}
+      </div>
+      <div className="tool-workspace-head">
+        <span className="tool-mode-icon">{moduleIcon}</span>
+        <div>
+          <small>{toolPreset.badge}</small>
+          <strong>{toolPreset.title}</strong>
+          <p>{toolPreset.description}</p>
+        </div>
+        <span className="tool-update-pill">更新：{new Date().toLocaleString("zh-TW")}</span>
+      </div>
+      {moduleId === "phone-price" ? (
+        <ReplicaPhone records={records} query={query} setDraft={setDraft} applyQuery={applyQuery} />
+      ) : moduleId === "tube" ? (
+        <ReplicaTube records={records} query={query} preset={toolPreset} openToolLink={openToolLink} />
+      ) : moduleId === "finance" ? (
+        <ReplicaFinance records={records} preset={toolPreset} openToolLink={openToolLink} />
+      ) : (
+        <ReplicaPrice records={records} query={query} preset={toolPreset} setDraft={setDraft} applyQuery={applyQuery} openToolLink={openToolLink} />
+      )}
+    </section>
+  );
+}
+
+function ReplicaPrice({
+  records,
+  query,
+  preset,
+  setDraft,
+  applyQuery,
+  openToolLink,
+}: {
+  records: Array<Record<string, any>>;
+  query: string;
+  preset: ToolPreset;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  applyQuery: (nextQuery?: string) => void;
+  openToolLink: (link: ToolLink) => void;
+}) {
+  const latest = records[0];
+  const title = String(latest?.title || latest?.queryText || query || "PChome 商品 DRAHC0-A900J8363");
+  const source = String(latest?.source || preset.defaultSource || "BigGo API");
+  const current = Number(latest?.currentPrice || latest?.lowPrice || 10735);
+  const high = Number(latest?.highPrice || current);
+  const low = Number(latest?.lowPrice || current);
+  const recent = records.length ? records.slice(0, 2) : [
+    { title: "PChome 商品 DRAHC0-A900J8363", resultUrl: "https://24h.pchome.com.tw/prod/DRAHC0-A900J8363" },
+    { title: "PChome 商品 DYALS1-A900JUGXV", resultUrl: "https://24h.pchome.com.tw/prod/DYALS1-A900JUGXV" },
+  ];
+
+  return (
+    <div className="tool-showcase amber replica-showcase">
+      <div className="price-search-shell">
+        <label>商品網址</label>
+        <div className="replica-query-row">
+          <input
+            value={query}
+            onChange={(event) => setDraft((prev) => ({ ...prev, toolType: "price", queryText: event.target.value }))}
+            onBlur={() => applyQuery()}
+            placeholder={preset.placeholder}
+          />
+          <button type="button" onClick={() => applyQuery()}>
+            <Search size={16} />
+            查詢歷史價格
+          </button>
+        </div>
+        <div className="tool-source-grid">
+          {preset.links.slice(0, 2).map((link) => (
+            <button key={link.label} type="button" className="tool-source-card" onClick={() => openToolLink(link)}>
+              <strong>{link.label}</strong>
+              <small>{link.hint}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="replica-section">
+        <div className="section-caption">
+          <strong>最近連結</strong>
+          <span>{recent.length} 筆</span>
+        </div>
+        <div className="tool-mini-grid">
+          {recent.map((record, index) => (
+            <a key={String(toolValue(record, "id") ?? index)} className="tool-pill-row" href={String(toolValue(record, "resultUrl") || "#")} target="_blank" rel="noreferrer">
+              <strong>{String(record.title || record.queryText || title)}</strong>
+              <small>{String(record.resultUrl || record.source || "商品 URL")}</small>
+            </a>
+          ))}
+        </div>
+      </div>
+      <div className="replica-section">
+        <div className="section-caption">
+          <strong>比價結果</strong>
+          <a href={String(latest?.resultUrl || "#")} target="_blank" rel="noreferrer">開啟商品 <ExternalLink size={12} /></a>
+        </div>
+        <div className="price-result-card">
+          <div>
+            <strong>{title}</strong>
+            <p>來源：{source}{latest?.notice ? `，${String(latest.notice)}` : ""}</p>
+          </div>
+          <span>{formatNumber(current)} TWD</span>
+        </div>
+        <div className="price-stat-grid">
+          <Metric label="現在價格" value={`${formatNumber(current)} TWD`} />
+          <Metric label="歷史最高" value={`${formatNumber(high)} TWD`} />
+          <Metric label="歷史最低" value={`${formatNumber(low)} TWD`} />
+        </div>
+        <div className="price-trend-card">
+          <div className="section-caption">
+            <strong>Price Trend / 歷史價格走勢</strong>
+            <span>{formatNumber(current)} TWD</span>
+          </div>
+          <div className="trend-canvas"><i /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReplicaPhone({
+  records,
+  query,
+  setDraft,
+  applyQuery,
+}: {
+  records: Array<Record<string, any>>;
+  query: string;
+  setDraft: Dispatch<SetStateAction<Record<string, string | number | boolean>>>;
+  applyQuery: (nextQuery?: string) => void;
+}) {
+  const rows = records.length ? records.slice(0, 4) : [
+    { title: "iPhone 17", currentPrice: 0, lowPrice: 0, source: "Apple" },
+    { title: "Samsung A17", currentPrice: 4990, lowPrice: 4990, source: "Samsung" },
+    { title: "Samsung A17 6G 128GB", currentPrice: 4990, lowPrice: 4990, source: "Samsung" },
+  ];
+  const max = Math.max(...rows.map((row) => Number(row.currentPrice || row.lowPrice || 1)), 1);
+  const samsungRows = rows.filter((row) => String(row.title || row.source).toLowerCase().includes("samsung")).slice(0, 2);
+
+  return (
+    <div className="tool-showcase phone replica-showcase">
+      <div className="phone-query-grid">
+        <ReplicaPhoneQuery
+          title="蘋果手機區塊"
+          note="預設查詢：iPhone 17，每年九月切換新基準。"
+          value={query || "iPhone 17"}
+          button="搜尋蘋果"
+          onChange={(value) => setDraft((prev) => ({ ...prev, toolType: "phone-price", queryText: value }))}
+          onSearch={() => applyQuery(query || "iPhone 17")}
+        />
+        <ReplicaPhoneQuery
+          title="三星手機區塊"
+          note="預設查詢：Samsung 26，三月前用去年末兩碼。"
+          value="Samsung 26"
+          button="搜尋三星"
+          onSearch={() => applyQuery("Samsung 26")}
+        />
+      </div>
+      <div className="chart-card">
+        <small>LANDTOP CHART</small>
+        <strong>地標網通 vs 傑昇通信</strong>
+        {rows.map((row, index) => {
+          const price = Number(row.currentPrice || row.lowPrice || 0);
+          return (
+            <div key={String(row.id ?? index)} className="chart-row">
+              <span>{String(row.title || row.queryText || "手機")}</span>
+              <div><i style={{ width: `${Math.max(6, (price / max) * 100)}%` }} /><em style={{ width: `${Math.max(6, (Number(row.lowPrice || price) / max) * 100)}%` }} /></div>
+              <b>{price ? `NT$ ${formatNumber(price)}` : "暫無價格"}</b>
+            </div>
+          );
+        })}
+      </div>
+      <ReplicaPhoneProducts title="蘋果手機區塊" rows={[]} emptyText="目前沒有這個區塊的比價結果。" />
+      <ReplicaPhoneProducts title="三星手機區塊" rows={samsungRows.length ? samsungRows : rows.slice(1)} emptyText="" />
+      <div className="phone-history-card">
+        <div className="section-caption">
+          <strong>Weekly History / 地標網通歷史價格</strong>
+          <span>最高 NT$ 4,990 / 最低 NT$ 4,990</span>
+        </div>
+        <div className="line-chart"><i /></div>
+      </div>
+    </div>
+  );
+}
+
+function ReplicaPhoneQuery({
+  title,
+  note,
+  value,
+  button,
+  onChange,
+  onSearch,
+}: {
+  title: string;
+  note: string;
+  value: string;
+  button: string;
+  onChange?: (value: string) => void;
+  onSearch: () => void;
+}) {
+  return (
+    <div className="phone-query-card">
+      <div>
+        <strong>{title}</strong>
+        <p>{note}</p>
+      </div>
+      <div className="inline-query">
+        <input value={value} readOnly={!onChange} onChange={(event) => onChange?.(event.target.value)} />
+        <button type="button" onClick={onSearch}><Search size={16} />{button}</button>
+      </div>
+    </div>
+  );
+}
+
+function ReplicaPhoneProducts({ title, rows, emptyText }: { title: string; rows: Array<Record<string, any>>; emptyText: string }) {
+  return (
+    <div className="phone-product-section">
+      <div className="section-caption">
+        <strong>{title}</strong>
+        <span>收合</span>
+      </div>
+      {rows.length ? (
+        <div className="phone-product-grid">
+          {rows.map((row, index) => (
+            <div className="phone-product-card" key={String(row.id ?? index)}>
+              <strong>{String(row.title || row.queryText || "Samsung A17")}</strong>
+              <small>{String(row.source || "SAMSUNG").toUpperCase()}</small>
+              <div className="phone-price-pills">
+                <span>地標網通 <b>NT$ {formatNumber(Number(row.currentPrice || 4990))}</b></span>
+                <span>傑昇通信 <b>{row.lowPrice ? `NT$ ${formatNumber(Number(row.lowPrice))}` : "--"}</b></span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="empty-dash">{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
+function ReplicaTube({
+  records,
+  query,
+  preset,
+  openToolLink,
+}: {
+  records: Array<Record<string, any>>;
+  query: string;
+  preset: ToolPreset;
+  openToolLink: (link: ToolLink) => void;
+}) {
+  const rows = records.length ? records.slice(0, 8) : [
+    { title: "中共退役軍人訪談：局勢與觀察", source: "吉利小鋪味", resultUrl: "https://www.youtube.com/" },
+    { title: "國際新聞快速整理與每日焦點", source: "一個人", resultUrl: "https://www.youtube.com/" },
+    { title: query || "鋒兄 Tube 影片清單", source: "Sun Channel", resultUrl: "https://www.youtube.com/" },
+  ];
+  const cardRows = records.length ? records.slice(0, 10) : rows.concat([
+    { title: "張內咸脫口秀精選", source: "張內咸脫口秀", resultUrl: "https://www.youtube.com/" },
+    { title: "財經局勢與 AI 新聞", source: "新聞台", resultUrl: "https://www.youtube.com/" },
+    { title: "水電與城市生活觀察", source: "鋒兄頻道", resultUrl: "https://www.youtube.com/" },
+  ]);
+  return (
+    <div className="tool-showcase tube replica-showcase">
+      <div className="tube-alert">
+        <strong>3 天內新影片：{rows.length} 部</strong>
+        <button type="button" onClick={() => openToolLink(preset.links[0])}><RefreshCcw size={14} />重新整理</button>
+      </div>
+      <div className="tube-list">
+        {rows.map((row, index) => (
+          <a key={String(row.id ?? index)} href={String(row.resultUrl || "#")} target="_blank" rel="noreferrer">
+            <strong>{String(row.title || row.queryText || "影片")}</strong>
+            <small>{String(row.source || "YouTube")} / {String(row.notice || "06/14 下午")}</small>
+          </a>
+        ))}
+      </div>
+      <ReplicaTubeChannel title="吉利小鋪味" rows={cardRows.slice(0, 10)} />
+      <ReplicaTubeChannel title="一個人" rows={cardRows.slice(0, 5)} />
+    </div>
+  );
+}
+
+function ReplicaTubeChannel({ title, rows }: { title: string; rows: Array<Record<string, any>> }) {
+  return (
+    <div className="tube-channel">
+      <div className="section-caption">
+        <strong>{title}</strong>
+        <span>{rows.length} 部影片</span>
+      </div>
+      <div className="tube-card-grid">
+        {rows.map((row, index) => (
+          <a className="tube-video-card" key={String(row.id ?? `${title}-${index}`)} href={String(row.resultUrl || "#")} target="_blank" rel="noreferrer">
+            <div className="tube-thumb"><Film size={22} /><span>{String(row.source || "YouTube")}</span></div>
+            <strong>{String(row.title || row.queryText || "鋒兄 Tube 影片")}</strong>
+            <small>{String(row.source || "YouTube")} / {String(row.notice || "06/14 下午")}</small>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReplicaFinance({ records, preset, openToolLink }: { records: Array<Record<string, any>>; preset: ToolPreset; openToolLink: (link: ToolLink) => void }) {
+  const rows = records.length ? records.slice(0, 14) : [
+    { title: "加權指數", queryText: "^TWII", currentPrice: 44169, highPrice: 46552, lowPrice: 21551, source: "Yahoo" },
+    { title: "台積電", queryText: "2330.TW", currentPrice: 2310, highPrice: 2440, lowPrice: 1015, source: "Yahoo" },
+    { title: "Shiller PE Ratio", queryText: "CAPE", currentPrice: 41, highPrice: 44, lowPrice: 0, source: "Multpl" },
+    { title: "Dow Jones Industrial Average", queryText: "DJIA", currentPrice: 51202, highPrice: 0, lowPrice: 0, source: "CNBC" },
+    { title: "S&P 500 Index", queryText: "SPX", currentPrice: 7431, highPrice: 0, lowPrice: 0, source: "CNBC" },
+    { title: "NASDAQ Composite", queryText: "IXIC", currentPrice: 25888, highPrice: 0, lowPrice: 0, source: "CNBC" },
+    { title: "日經 225", queryText: "N225", currentPrice: 66020, highPrice: 0, lowPrice: 0, source: "CNBC" },
+    { title: "KOSPI Index", queryText: "KOSPI", currentPrice: 3123, highPrice: 0, lowPrice: 0, source: "CNBC" },
+    { title: "三豐電子", queryText: "SAMSUNG", currentPrice: 322500, highPrice: 0, lowPrice: 0, source: "Yahoo" },
+    { title: "SK 海力士", queryText: "SK", currentPrice: 215000, highPrice: 0, lowPrice: 0, source: "Yahoo" },
+    { title: "美金兌新台幣", queryText: "USD/TWD", currentPrice: 31.61, highPrice: 0, lowPrice: 0, source: "Yahoo" },
+    { title: "美元兌日圓", queryText: "USD/JPY", currentPrice: 160.19, highPrice: 0, lowPrice: 0, source: "Yahoo" },
+    { title: "Crude Oil", queryText: "CL", currentPrice: 87.33, highPrice: 0, lowPrice: 0, source: "CNBC" },
+    { title: "Gold COMEX", queryText: "GC", currentPrice: 4239.9, highPrice: 0, lowPrice: 0, source: "CNBC" },
+  ];
+  const shiller = rows.find((row) => String(row.title).includes("Shiller")) || rows[2];
+  return (
+    <div className="tool-showcase finance replica-showcase">
+      <div className="finance-hero">
+        <div>
+          <strong>Shiller PE Ratio</strong>
+          <p>Max: 44.19 (Dec 1999)</p>
+        </div>
+        <button type="button" onClick={() => openToolLink(preset.links[0])}><RefreshCcw size={14} />重新整理</button>
+        <span>{formatNumber(Number(shiller?.currentPrice || 41))}</span>
+      </div>
+      <ReplicaFinanceGroup title="台股" rows={rows.slice(0, 2)} />
+      <ReplicaFinanceGroup title="美股指數" rows={rows.slice(3, 6)} />
+      <ReplicaFinanceGroup title="估值" rows={[shiller]} />
+      <ReplicaFinanceGroup title="亞洲" rows={rows.slice(6, 8)} />
+      <ReplicaFinanceGroup title="韓國" rows={rows.slice(8, 10)} />
+      <ReplicaFinanceGroup title="匯率" rows={rows.slice(10, 12)} />
+      <ReplicaFinanceGroup title="商品" rows={rows.slice(12, 14)} />
+    </div>
+  );
+}
+
+function ReplicaFinanceGroup({ title, rows }: { title: string; rows: Array<Record<string, any> | undefined> }) {
+  return (
+    <div className="finance-section">
+      <div className="section-caption">
+        <strong>{title}</strong>
+        <span>{rows.filter(Boolean).length} 項</span>
+      </div>
+      <div className="finance-grid">
+        {rows.filter(Boolean).map((row, index) => (
+          <div key={String(row?.id ?? `${title}-${index}`)} className="finance-card">
+            <small>{String(row?.source || "Yahoo")}</small>
+            <strong>{String(row?.title || row?.queryText || "Quote")}</strong>
+            <b>{formatNumber(Number(row?.currentPrice || 0))}<em>{String(row?.queryText || "")}</em></b>
+            <p>52W High {formatNumber(Number(row?.highPrice || 0)) || "--"} / 52W Low {formatNumber(Number(row?.lowPrice || 0)) || "--"}</p>
           </div>
         ))}
       </div>
