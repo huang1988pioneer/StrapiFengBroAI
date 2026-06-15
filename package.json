@@ -5,7 +5,8 @@
   "scripts": {
     "build": "remix vite:build",
     "dev": "remix vite:dev --host 127.0.0.1",
-    "start": "remix-serve ./build/server/index.js",
+    "start": "vite preview --host 127.0.0.1 --port 4173",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
