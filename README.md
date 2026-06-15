@@ -1,90 +1,110 @@
 # StrapiFengBroAI
 
-Remix 版鋒兄資料庫 CRUD 工作台，配合 `huang1988pioneer/Strapihuang1988pioneer`
-的 Strapi content-type 欄位，並參考 `goldshoot0720/fengbroaiappwrite`
-的模組與 Appwrite CSV 格式。
+鋒兄資料庫 Remix CRUD Console。  
+前端使用 Remix SPA mode，後端資料透過 Strapi REST API 做新增、查詢、更新、刪除，並保留 Appwrite CSV 匯入/匯出格式。
 
 ## 功能
 
-- 鋒兄訂閱、食品、筆記、常用、圖片、影片、音樂、文件、播客、銀行、例行、工具、設定、關於
-- 鋒兄工具子項目：鋒兄比價、手機比價、鋒兄Tube、鋒兄金融
-- 每個有 Strapi collection API 的模組支援新增、編輯、刪除、搜尋
-- 新增、編輯、刪除、CSV 匯入會直接寫入 Strapi 資料庫
-- 只使用瀏覽器 `localStorage` 保存鋒兄設定中的 Strapi URL 與 Strapi API Token
-- 支援 CSV 匯入至 Strapi 與從 Strapi 匯出 CSV，包含 Appwrite 常見的雙引號與多行備註
-- 內建訂閱、食品、筆記、常用、銀行、例行的範例 CSV 資料
-- 鋒兄設定極簡化為 Strapi URL、Strapi API Token
-- 鋒兄設定提供「測試連線」，會用目前表單內容測試 `Subscription` API 讀取權限
-- 鋒兄圖片、影片、音樂、文件、播客支援上傳檔案到 Strapi Media Library，並把檔案 URL 寫入對應 collection
+- 鋒兄訂閱、食品、筆記、常用、圖片、影片、音樂、文件、播客、銀行、例行、工具、設定、關於。
+- 每個資料模組支援 CRUD、CSV 匯入、CSV 匯出。
+- 圖片、影片、音樂、文件、播客支援 Strapi Media Library 上傳後建立資料。
+- 鋒兄設定極簡化，只需要 Strapi URL 與 Strapi API Token。
+- 鋒兄工具支援即時資料：
+  - 鋒兄比價：參考 SQLiteCloudFengBroAI `/api/resolve`
+  - 手機比價：參考 SQLiteCloudFengBroAI `/api/landtop`
+  - 鋒兄Tube：參考 SQLiteCloudFengBroAI `/api/fengbro-tube`
+  - 鋒兄金融：參考 SQLiteCloudFengBroAI `/api/fengbro-finance`
 
-## Strapi CRUD 對應
+## 環境變數
 
-目前有對應 Strapi collection API 的選單會直接 CRUD：
+建立 `.env`：
 
-- 鋒兄訂閱：`/api/subscriptions`
-- 鋒兄食品：`/api/foods`
-- 鋒兄筆記：`/api/articles`
-- 鋒兄常用：`/api/commonaccounts`
-- 鋒兄圖片：`/api/images`
-- 鋒兄影片：`/api/videos`
-- 鋒兄音樂：`/api/music`
-- 鋒兄文件：`/api/commondocuments`
-- 鋒兄播客：`/api/podcasts`
-- 鋒兄銀行：`/api/banks`
-- 鋒兄例行：`/api/routines`
-- 鋒兄比價：`/api/tool-price-histories`
-
-手機比價、鋒兄Tube、鋒兄金融若要真正 CRUD，需要先在 Strapi 新增對應
-collection type，並在前端補上 API path。
-
-## 檔案上傳
-
-在鋒兄圖片、影片、音樂、文件、播客選單中點上傳按鈕，前端會先呼叫：
-
-```text
-POST /api/upload
-```
-
-上傳成功後會自動填入：
-
-- `名稱`
-- `檔案 URL`
-- `封面 URL`
-- `檔案類型`
-- `Hash`
-- 影片會另外填入 `檔案大小`
-
-再按 `建立資料`，才會新增到 Strapi 對應 collection。
-
-## Token 注意事項
-
-目前版本是前端直連 Strapi 的 CRUD 原型，只有 `Strapi URL` 和
-`Strapi API Token` 會存進瀏覽器 `localStorage`。EdgeOne 可以設定：
-
-```text
+```bash
 VITE_STRAPI_URL=https://your-strapi-domain
-VITE_STRAPI_API_TOKEN=your-test-token
+VITE_STRAPI_API_TOKEN=your-strapi-api-token
+VITE_FENGBRO_TOOL_API_BASE=https://sq-lite-cloud-feng-bro-ai.vercel.app
 ```
 
-因為 `VITE_` 變數會打包進前端 JS，正式接 Strapi 時，應改由後端環境變數或
-平台 Secret 管理有寫入/刪除權限的 token。
+`VITE_STRAPI_URL` 與 `VITE_STRAPI_API_TOKEN` 會預填到鋒兄設定。  
+若沒有設定，也可以在頁面中的「鋒兄設定」輸入。
 
-## 開發
+## 本地開發
 
 ```bash
 npm install
 npm run dev
 ```
 
-預設開發網址：
+開發網址：
 
 ```text
 http://127.0.0.1:5173
 ```
 
-## 檢查
+## 建置與預覽
 
 ```bash
 npm run typecheck
 npm run build
+npm start
+```
+
+`npm start` 會用 Vite preview 預覽 Remix SPA 靜態產物：
+
+```text
+http://127.0.0.1:4173
+```
+
+也可以使用同等指令：
+
+```bash
+npm run preview
+```
+
+## Strapi Collection API 路徑
+
+目前前端預期的 Strapi REST API：
+
+- `/api/subscriptions`
+- `/api/foods`
+- `/api/articles`
+- `/api/commonaccounts`
+- `/api/images`
+- `/api/videos`
+- `/api/music-items`
+- `/api/commondocuments`
+- `/api/podcasts`
+- `/api/banks`
+- `/api/routines`
+- `/api/tool-price-histories`
+
+請確認 Strapi API Token 具備對應 collection 的 `find`、`findOne`、`create`、`update`、`delete` 權限。若要上傳檔案，也需要 Upload plugin 權限。
+
+## CSV
+
+CSV 匯入/匯出相容 Appwrite 常見格式：
+
+- 支援 UTF-8 BOM。
+- 支援雙引號欄位。
+- 支援多行備註。
+- 匯出會依目前模組欄位順序輸出。
+
+## 部署
+
+本專案是 SPA mode，建置後主要靜態入口在：
+
+```text
+build/client/index.html
+```
+
+EdgeOne Pages、Vercel、Netlify 等靜態部署平台可使用：
+
+```bash
+npm run build
+```
+
+輸出目錄：
+
+```text
+build/client
 ```
